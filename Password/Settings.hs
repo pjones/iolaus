@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE DeriveGeneric     #-}
 
 {-|
@@ -27,21 +28,17 @@ module Sthenauth.Crypto.Password.Settings
 --------------------------------------------------------------------------------
 -- Library Imports:
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
-import Data.Aeson (ToJSON(..), FromJSON(..))
-import qualified Data.Aeson as Aeson
+import Data.Aeson (FromJSON, ToJSON)
+import Dhall (Interpret)
 import GHC.Generics
+import Numeric.Natural (Natural)
 
 --------------------------------------------------------------------------------
 -- | Settings to control the password generation process.
 data Settings = Settings
-  { iterations :: Int -- ^ Number of iterations for the algorithm.
-  , bytes      :: Int -- ^ Size of the output in bytes.
-  } deriving (Generic, Eq, Ord, Show, Read)
-
---------------------------------------------------------------------------------
-instance FromJSON Settings
-instance ToJSON Settings where
-  toEncoding = Aeson.genericToEncoding Aeson.defaultOptions
+  { iterations :: Natural -- ^ Number of iterations for the algorithm.
+  , bytes      :: Natural -- ^ Size of the output in bytes.
+  } deriving (Generic, Eq, Ord, Show, Interpret, FromJSON, ToJSON)
 
 --------------------------------------------------------------------------------
 -- | Default settings.
@@ -60,8 +57,8 @@ defaultSettings =
 -- | Convert the settings into PBKDF2 parameters.
 forPBKDF2 :: Settings -> PBKDF2.Parameters
 forPBKDF2 s =
-  PBKDF2.Parameters { PBKDF2.iterCounts   = iterations'
-                    , PBKDF2.outputLength = bytes'
+  PBKDF2.Parameters { PBKDF2.iterCounts   = fromIntegral iterations'
+                    , PBKDF2.outputLength = fromIntegral bytes'
                     }
 
   where

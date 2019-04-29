@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE OverloadedStrings  #-}
@@ -21,7 +22,7 @@ License: Apache-2.0
 Core password management types an functions.
 
 -}
-module Sthenauth.Crypto.Password.Prim
+module Sthenauth.Crypto.Internal.Password
   ( Password
   , Clear
   , Hashed
@@ -63,12 +64,7 @@ import qualified Sthenauth.Crypto.Password.Settings as Settings
 --   configured.
 data HashType = PBKDF2_HS3512 Settings Salt
               | LegacyBCrypt
-              deriving (Generic, Eq, Show)
-
-instance FromJSON HashType
-
-instance ToJSON HashType where
-  toEncoding = Aeson.genericToEncoding Aeson.defaultOptions
+              deriving (Generic, Eq, Show, FromJSON, ToJSON)
 
 --------------------------------------------------------------------------------
 -- | Type representing insecure (plain) passwords.

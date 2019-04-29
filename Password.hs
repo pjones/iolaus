@@ -35,5 +35,5 @@ module Sthenauth.Crypto.Password
   ) where
 
 --------------------------------------------------------------------------------
-import Sthenauth.Crypto.Password.Prim
+import Sthenauth.Crypto.Internal.Password
 import Sthenauth.Crypto.Password.Settings
