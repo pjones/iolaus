@@ -28,7 +28,7 @@ module Sthenauth.Crypto.Symmetric
   ) where
 
 --------------------------------------------------------------------------------
--- | Library Imports:
+-- Library Imports:
 import Crypto.Cipher.AES (AES256)
 import qualified Crypto.Cipher.Types as Cryptonite
 import Crypto.Error (CryptoError, eitherCryptoError)
@@ -39,14 +39,18 @@ import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 
 --------------------------------------------------------------------------------
--- | Project Imports:
+-- Project Imports:
 import Sthenauth.Crypto.Internal.IV (IV(..))
 import qualified Sthenauth.Crypto.Internal.IV as IV
 import Sthenauth.Crypto.Internal.Key (Key(..))
 
 --------------------------------------------------------------------------------
-data Clear      -- ^ Phantom type to mark a secret as clear (decrypted).
-data Encrypted  -- ^ Phantom type to mark a secret as encrypted.
+-- | Phantom type to mark a secret as clear (decrypted).
+data Clear
+
+--------------------------------------------------------------------------------
+-- | Phantom type to mark a secret as encrypted.
+data Encrypted
 
 --------------------------------------------------------------------------------
 newtype Secret a = Secret { getSecret :: ByteString }

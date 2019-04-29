@@ -26,7 +26,7 @@ module Sthenauth.Crypto.Internal.IV
   ) where
 
 --------------------------------------------------------------------------------
--- | Library Imports:
+-- Library Imports:
 import Crypto.Cipher.Types (BlockCipher(blockSize))
 import qualified Crypto.Cipher.Types as Cryptonite
 import Crypto.Error (CryptoError(CryptoError_IvSizeInvalid))
