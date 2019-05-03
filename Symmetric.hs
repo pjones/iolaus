@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 {-|
 
 Copyright:
@@ -18,10 +21,6 @@ Encrypting and decrypting with a symmetric cipher (AES256).
 -}
 module Sthenauth.Crypto.Symmetric
   ( Secret
-  , Clear
-  , Encrypted
-  , makeSecret
-  , readSecret
   , encrypt
   , encrypt'
   , decrypt
@@ -33,37 +32,34 @@ import Crypto.Cipher.AES (AES256)
 import qualified Crypto.Cipher.Types as Cryptonite
 import Crypto.Error (CryptoError, eitherCryptoError)
 import Crypto.Random (MonadRandom(..))
+import Data.Binary (Binary)
+import qualified Data.Binary as Binary
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
-import Data.Text (Text)
-import Data.Text.Encoding (encodeUtf8, decodeUtf8)
+import qualified Data.ByteString.Lazy as LBS
+import qualified Database.Beam as Beam
+import qualified Database.Beam.Backend.SQL as Beam
+import Database.Beam.Postgres (Postgres)
+import Database.Beam.Postgres.Syntax (PgValueSyntax)
 
 --------------------------------------------------------------------------------
 -- Project Imports:
+import Sthenauth.Crypto.Encoding (Encoding(..))
 import Sthenauth.Crypto.Internal.IV (IV(..))
 import qualified Sthenauth.Crypto.Internal.IV as IV
 import Sthenauth.Crypto.Internal.Key (Key(..))
 
 --------------------------------------------------------------------------------
--- | Phantom type to mark a secret as clear (decrypted).
-data Clear
-
---------------------------------------------------------------------------------
--- | Phantom type to mark a secret as encrypted.
-data Encrypted
-
---------------------------------------------------------------------------------
 newtype Secret a = Secret { getSecret :: ByteString }
+  deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
--- | Create a clear secret from a 'Text'.
-makeSecret :: Text -> Secret Clear
-makeSecret = Secret . encodeUtf8
+instance Beam.FromBackendRow Postgres (Secret a) where
+  fromBackendRow = (\(Encoding bs) -> Secret bs) <$> Beam.fromBackendRow
 
 --------------------------------------------------------------------------------
--- | Access the clear text inside a secret.
-readSecret :: Secret Clear -> Text
-readSecret = decodeUtf8 . getSecret
+instance Beam.HasSqlValueSyntax PgValueSyntax (Secret a) where
+  sqlValueSyntax = Beam.sqlValueSyntax . Encoding . getSecret
 
 --------------------------------------------------------------------------------
 -- | Encrypt a secret.
@@ -72,48 +68,53 @@ readSecret = decodeUtf8 . getSecret
 -- stored with the encrypted secret.
 encrypt
   :: ( MonadRandom m
+     , Binary a
      )
   => Key AES256
   -- ^ The encryption key.
 
-  -> Secret Clear
+  -> a
   -- ^ The text to encrypt.
 
-  -> m (Either CryptoError (Secret Encrypted))
+  -> m (Either CryptoError (Secret a))
   -- ^ If successful, the encrypted secret.
 encrypt k s = encrypt' <$> IV.generate <*> pure k <*> pure s
 
 --------------------------------------------------------------------------------
 -- | Encrypt a secret given a pre-generated IV.
 encrypt'
-  :: IV AES256
+  :: ( Binary a
+     )
+  => IV AES256
   -- ^ The initialization vector to use.  Should be unique.
 
   -> Key AES256
   -- ^ The encryption key.
 
-  -> Secret Clear
+  -> a
   -- ^ The text to encrypt.
 
-  -> Either CryptoError (Secret Encrypted)
+  -> Either CryptoError (Secret a)
   -- ^ If successful, the encrypted secret.
-encrypt' iv (Key key) (Secret secret) = do
+encrypt' iv (Key key) x = do
   cIV     <- IV.toCryptonite iv
   context <- eitherCryptoError $ Cryptonite.cipherInit key
 
-  let bs = Cryptonite.ctrCombine context cIV secret
+  let bs = Cryptonite.ctrCombine context cIV (LBS.toStrict $ Binary.encode x)
   pure $ Secret (getIV iv <> bs) -- Store IV in the secret.
 
 --------------------------------------------------------------------------------
 -- | Decrypt text that was previously encrypted.
 decrypt
-  :: Key AES256
+  :: ( Binary a
+     )
+  => Key AES256
   -- ^ The encryption key used to encrypt the text.
 
-  -> Secret Encrypted
+  -> Secret a
   -- ^ The previously encrypted secret.
 
-  -> Either CryptoError (Secret Clear)
+  -> Either CryptoError a
   -- ^ If successful, the decrypted text.
 decrypt (Key key) (Secret bs) = do
   let size = Cryptonite.blockSize (undefined :: AES256)
@@ -122,4 +123,8 @@ decrypt (Key key) (Secret bs) = do
 
   cIV <- IV.toCryptonite iv
   context <- eitherCryptoError $ Cryptonite.cipherInit key
-  pure (Secret $ Cryptonite.ctrCombine context cIV secret)
+
+  let bin = Cryptonite.ctrCombine context cIV secret
+      x   = Binary.decode (LBS.fromStrict bin)
+
+  pure x

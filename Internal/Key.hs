@@ -39,7 +39,7 @@ import qualified Dhall
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import qualified Sthenauth.Crypto.Binary as Binary
+import qualified Sthenauth.Crypto.Encoding as Encoding
 
 --------------------------------------------------------------------------------
 -- | Type alias to remind you that a key can't be used for encryption.
@@ -54,11 +54,11 @@ instance IsString (Key Unchecked) where
 
 --------------------------------------------------------------------------------
 instance Dhall.Interpret (Key Unchecked) where
-  autoWith _ = Key . Binary.getBytes . Binary.decode <$> Dhall.strictText
+  autoWith _ = Key . Encoding.getBytes . Encoding.decode <$> Dhall.strictText
 
 --------------------------------------------------------------------------------
 instance FromJSON (Key Unchecked) where
-  parseJSON = fmap (Key . Binary.getBytes) . parseJSON
+  parseJSON = fmap (Key . Encoding.getBytes) . parseJSON
 
 --------------------------------------------------------------------------------
 -- | Discover the appropriate key size for a symmetric cipher.

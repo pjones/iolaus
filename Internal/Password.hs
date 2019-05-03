@@ -1,8 +1,9 @@
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE StandaloneDeriving    #-}
 
 {-|
 
@@ -49,11 +50,15 @@ import Data.String (IsString(..))
 import Data.Text (Text, strip)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Text.ICU.Normalize (NormalizationMode(NFKC), normalize)
-import GHC.Generics
+import qualified Database.Beam as Beam
+import qualified Database.Beam.Backend.SQL as Beam
+import Database.Beam.Postgres (Postgres, PgJSON(..))
+import Database.Beam.Postgres.Syntax (PgValueSyntax)
+import GHC.Generics (Generic)
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Sthenauth.Crypto.Binary (Binary(..))
+import Sthenauth.Crypto.Encoding (Encoding(..))
 import Sthenauth.Crypto.Salt (Salt(..), SharedSalt(..))
 import qualified Sthenauth.Crypto.Salt as Salt
 import Sthenauth.Crypto.Password.Settings (Settings(..))
@@ -112,7 +117,7 @@ instance Eq (Password Hashed) where
 instance ToJSON (Password Hashed) where
   toJSON (Password (Hashed ht) bs) =
     Aeson.object [ "type" .= ht
-                 , "hash" .= Binary bs
+                 , "hash" .= Encoding bs
                  ]
 
 --------------------------------------------------------------------------------
@@ -122,6 +127,16 @@ instance FromJSON (Password Hashed) where
     Password <$> (Hashed   <$> v .: "type")
              <*> (getBytes <$> v .: "hash")
   parseJSON invalid = Aeson.typeMismatch "Password" invalid
+
+--------------------------------------------------------------------------------
+-- | Read secured passwords from a database.
+instance Beam.FromBackendRow Postgres (Password Hashed) where
+  fromBackendRow = (\(PgJSON x) -> x) <$> Beam.fromBackendRow
+
+--------------------------------------------------------------------------------
+-- | Store secured passwords in a database.
+instance Beam.HasSqlValueSyntax PgValueSyntax (Password Hashed) where
+  sqlValueSyntax = Beam.sqlValueSyntax . PgJSON
 
 --------------------------------------------------------------------------------
 -- | Construct an insecure password.  This type of password has no

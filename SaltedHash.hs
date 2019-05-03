@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 {-|
 
 Copyright:
@@ -35,17 +37,29 @@ import qualified Data.ByteString as ByteString
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Text.ICU.Normalize (NormalizationMode(NFKC), normalize)
+import qualified Database.Beam as Beam
+import qualified Database.Beam.Backend.SQL as Beam
+import Database.Beam.Postgres (Postgres)
+import Database.Beam.Postgres.Syntax (PgValueSyntax)
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Sthenauth.Crypto.Binary (Binary(..))
-import qualified Sthenauth.Crypto.Binary as Binary
+import Sthenauth.Crypto.Encoding (Encoding(..))
+import qualified Sthenauth.Crypto.Encoding as Encoding
 import Sthenauth.Crypto.Salt (Salt(..), SharedSalt(..))
 
 --------------------------------------------------------------------------------
 -- | A type that represents a salted and hashed value.
 newtype SaltedHash a = SaltedHash { getHash :: Text }
   deriving (Eq, Show)
+
+--------------------------------------------------------------------------------
+instance Beam.FromBackendRow Postgres (SaltedHash a) where
+  fromBackendRow = SaltedHash <$> Beam.fromBackendRow
+
+--------------------------------------------------------------------------------
+instance Beam.HasSqlValueSyntax PgValueSyntax (SaltedHash a) where
+  sqlValueSyntax = Beam.sqlValueSyntax . getHash
 
 --------------------------------------------------------------------------------
 -- | Types that can be salted and hashed.
@@ -73,8 +87,8 @@ saltedHash salt =
 saltedHash' :: SharedSalt -> ByteString -> SaltedHash ByteString
 saltedHash' (SharedSalt salt) =
   SaltedHash
-    . Binary.encode
-    . Binary
+    . Encoding.encode
+    . Encoding
     . ByteString.pack
     . ByteArray.unpack
     . hash

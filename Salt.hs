@@ -33,8 +33,7 @@ import Data.ByteString.Char8 (ByteString)
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Sthenauth.Crypto.Binary (Binary(..))
-import qualified Sthenauth.Crypto.Binary as Binary
+import Sthenauth.Crypto.Encoding (Encoding(..))
 
 --------------------------------------------------------------------------------
 -- | A binary salt that should only be used for a single secret.
@@ -43,12 +42,12 @@ newtype Salt = Salt { getSalt :: ByteString }
 
 --------------------------------------------------------------------------------
 instance Show Salt where
-  show (Salt bs) = show (Binary.encode $ Binary bs)
+  show (Salt bs) = show (Encoding bs)
 
 --------------------------------------------------------------------------------
 instance ToJSON Salt where
-  toJSON (Salt bs) = toJSON (Binary bs)
-  toEncoding (Salt bs) = toEncoding (Binary bs)
+  toJSON (Salt bs) = toJSON (Encoding bs)
+  toEncoding (Salt bs) = toEncoding (Encoding bs)
 
 --------------------------------------------------------------------------------
 instance FromJSON Salt where
