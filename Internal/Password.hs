@@ -209,7 +209,7 @@ hash' (SharedSalt ss) salt settings (Password _ clear) =
 
     -- A single round of hashing.
     go :: Salt -> ByteString -> ByteString
-    go (Salt s) p = PBKDF2.generate prf (Settings.forPBKDF2 settings) p s
+    go s p = PBKDF2.generate prf (Settings.forPBKDF2 settings) p (getSalt s)
 
 --------------------------------------------------------------------------------
 -- | When verifying that a clear password entered from a user matches

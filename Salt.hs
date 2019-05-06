@@ -18,8 +18,11 @@ Salt: random data mixed with a password to secure it while in rest
 
 -}
 module Sthenauth.Crypto.Salt
-  ( Salt(..)
+  ( Salt
   , SharedSalt(..)
+  , getSalt
+  , salt
+  , sharedSalt
   , recommended
   , generate
   , generate'
@@ -27,9 +30,11 @@ module Sthenauth.Crypto.Salt
 
 --------------------------------------------------------------------------------
 -- Library Imports:
+import Crypto.Error (CryptoError(CryptoError_SaltTooSmall))
 import Crypto.Random (MonadRandom(..))
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.ByteString.Char8 (ByteString)
+import qualified Data.ByteString.Char8 as ByteString
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -57,6 +62,18 @@ instance FromJSON Salt where
 -- | A password salt that is shared by all secrets in the system.
 newtype SharedSalt = SharedSalt Salt
   deriving (Eq, Show)
+
+--------------------------------------------------------------------------------
+-- | Convert a 'ByteString' into 'Salt'.
+salt :: ByteString -> Either CryptoError Salt
+salt bs = if ByteString.length bs >= recommended
+             then Right (Salt bs)
+             else Left CryptoError_SaltTooSmall
+
+--------------------------------------------------------------------------------
+-- | Convert a 'ByteString' into 'SharedSalt'.
+sharedSalt :: ByteString -> Either CryptoError SharedSalt
+sharedSalt = fmap SharedSalt . salt
 
 --------------------------------------------------------------------------------
 -- | The recommended salt length (as per RFC 8018 section 4).

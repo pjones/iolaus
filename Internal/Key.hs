@@ -30,6 +30,7 @@ module Sthenauth.Crypto.Internal.Key
 --------------------------------------------------------------------------------
 -- Library Imports:
 import Crypto.Cipher.Types (Cipher(cipherKeySize), KeySizeSpecifier(..))
+import Crypto.Error (CryptoError(CryptoError_KeySizeInvalid))
 import Crypto.Random (MonadRandom(..))
 import Data.Aeson (FromJSON(..))
 import Data.ByteString.Char8 (ByteString)
@@ -83,11 +84,11 @@ pack = Key
 -- This is necessary because when a key is read from disk or the
 -- network it won't be tied to any particular cipher.  Instead it will
 -- be of type @Key Unchecked@.
-convert :: forall c. (Cipher c) => Key Unchecked -> Maybe (Key c)
+convert :: forall c. (Cipher c) => Key Unchecked -> Either CryptoError (Key c)
 convert (Key bs) = 
   if ByteString.length bs == keySize (undefined :: c) 
-     then Just (Key bs)
-     else Nothing
+     then Right (Key bs)
+     else Left CryptoError_KeySizeInvalid
 
 --------------------------------------------------------------------------------
 -- | Generate a key that is appropriate for the given cipher.
