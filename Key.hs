@@ -22,6 +22,7 @@ module Sthenauth.Crypto.Key
   , pack
   , convert
   , generate
+  , encode
   ) where
 
 import Sthenauth.Crypto.Internal.Key

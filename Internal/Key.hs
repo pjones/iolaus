@@ -25,6 +25,7 @@ module Sthenauth.Crypto.Internal.Key
   , pack
   , convert
   , generate
+  , encode
   ) where
 
 --------------------------------------------------------------------------------
@@ -36,10 +37,12 @@ import Data.Aeson (FromJSON(..))
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
 import Data.String (IsString(..))
+import Data.Text (Text)
 import qualified Dhall
 
 --------------------------------------------------------------------------------
 -- Project Imports:
+import Sthenauth.Crypto.Encoding (Encoding(..))
 import qualified Sthenauth.Crypto.Encoding as Encoding
 
 --------------------------------------------------------------------------------
@@ -94,3 +97,8 @@ convert (Key bs) =
 -- | Generate a key that is appropriate for the given cipher.
 generate :: forall m c. (MonadRandom m, Cipher c) => m (Key c)
 generate = Key <$> getRandomBytes (keySize (undefined :: c))
+
+--------------------------------------------------------------------------------
+-- | Encode a key for writing to a safe location.
+encode :: Key c -> Text
+encode = Encoding.encode . Encoding . getKey 
