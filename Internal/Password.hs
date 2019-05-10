@@ -99,12 +99,10 @@ data Password a = Password a ByteString
 deriving instance Show (Password Hashed)
 
 --------------------------------------------------------------------------------
--- | Allow insecure passwords to be created from strings.
 instance IsString (Password Clear) where
   fromString = password . fromString
 
 --------------------------------------------------------------------------------
--- | Allow clear passwords to be compared for equality.
 instance Eq (Password Clear) where
   (==) (Password (Clear ()) x) (Password (Clear ()) y) = x == y
 
@@ -113,7 +111,6 @@ instance Eq (Password Hashed) where
   (==) (Password (Hashed x) z) (Password (Hashed y) w) = x == y && z == w
 
 --------------------------------------------------------------------------------
--- | Allow secured passwords to be encoded into JSON.
 instance ToJSON (Password Hashed) where
   toJSON (Password (Hashed ht) bs) =
     Aeson.object [ "type" .= ht
@@ -121,7 +118,6 @@ instance ToJSON (Password Hashed) where
                  ]
 
 --------------------------------------------------------------------------------
--- | Allow secured passwords to be decoded from JSON.
 instance FromJSON (Password Hashed) where
   parseJSON (Aeson.Object v) =
     Password <$> (Hashed   <$> v .: "type")
@@ -129,12 +125,10 @@ instance FromJSON (Password Hashed) where
   parseJSON invalid = Aeson.typeMismatch "Password" invalid
 
 --------------------------------------------------------------------------------
--- | Read secured passwords from a database.
 instance Beam.FromBackendRow Postgres (Password Hashed) where
   fromBackendRow = (\(PgJSON x) -> x) <$> Beam.fromBackendRow
 
 --------------------------------------------------------------------------------
--- | Store secured passwords in a database.
 instance Beam.HasSqlValueSyntax PgValueSyntax (Password Hashed) where
   sqlValueSyntax = Beam.sqlValueSyntax . PgJSON
 
