@@ -16,7 +16,11 @@ License: BSD-2-Clause
 -}
 module Iolaus.Opaleye
   ( Config(..)
+  , Error(..)
+  , migrate
   ) where
 
 --------------------------------------------------------------------------------
 import Iolaus.Opaleye.Config
+import Iolaus.Opaleye.Error
+import Iolaus.Opaleye.Migrate
