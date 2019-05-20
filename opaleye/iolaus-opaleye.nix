@@ -1,4 +1,4 @@
-{ mkDerivation, aeson, base, dhall, lens, mtl, opaleye
+{ mkDerivation, aeson, base, dhall, filepath, lens, mtl, opaleye
 , postgresql-simple, postgresql-simple-migration
 , product-profunctors, resource-pool, retry, stdenv, text
 }:
@@ -6,8 +6,16 @@ mkDerivation {
   pname = "iolaus-opaleye";
   version = "0.1.0.0";
   src = ./.;
+  isLibrary = true;
+  isExecutable = true;
+  enableSeparateDataOutput = true;
   libraryHaskellDepends = [
-    aeson base dhall lens mtl opaleye postgresql-simple
+    aeson base dhall filepath lens mtl opaleye postgresql-simple
+    postgresql-simple-migration product-profunctors resource-pool retry
+    text
+  ];
+  executableHaskellDepends = [
+    aeson base dhall filepath lens mtl opaleye postgresql-simple
     postgresql-simple-migration product-profunctors resource-pool retry
     text
   ];
