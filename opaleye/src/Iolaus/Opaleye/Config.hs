@@ -62,6 +62,9 @@ data Config = Config
     -- subsequent failure.  (A value of 'Nothing' means use the
     -- default.)
 
+  , metricsPrefix :: Maybe Text
+    -- ^ The prefix for collected metrics.  Example: @iolaus.opaleye@
+
   } deriving (Generic, Show, Eq, Interpret, ToJSON, FromJSON)
 
 --------------------------------------------------------------------------------
@@ -72,4 +75,5 @@ defaultConfig t = Config { connectionString = t
                          , poolTimeoutSec   = Nothing
                          , retries          = Nothing
                          , backoff          = Nothing
+                         , metricsPrefix    = Nothing
                          }

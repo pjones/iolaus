@@ -40,6 +40,7 @@ import Opaleye.SqlTypes (SqlText)
 import System.Environment (getEnv)
 import System.FilePath ((</>))
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout)
+import qualified System.Metrics as Metrics
 
 --------------------------------------------------------------------------------
 -- | Access the schema files for the database migrations:
@@ -117,12 +118,16 @@ runApp opaleye = flip runReaderT opaleye . runExceptT . unApp
 --------------------------------------------------------------------------------
 main :: IO ()
 main = do
+  -- Giving an EKG store to Iolaus is optional, but we'll do it so we
+  -- can see how many queries were executed.
+  store <- Metrics.newStore
+
   -- Create a configuration and initialize Iolaus.  Normally we would
   -- read the configuration from a file.  Here we'll just grab the
   -- database connection string from the environment and use the
   -- default confutation settings.
-  connString <- Text.pack <$> getEnv "DB_CONN"
-  opaleye <- DB.initOpaleye $ DB.defaultConfig connString
+  config <- DB.defaultConfig . Text.pack <$> getEnv "DB_CONN"
+  opaleye <- DB.initOpaleye config (Just store)
 
   -- Makes the name prompting in createNewPerson nicer.
   hSetBuffering stdout NoBuffering
@@ -135,4 +140,6 @@ main = do
     createNewPerson
     printEveryone
 
+  -- Print out the result (which should be @Right ()@) and the EKG store:
   print result
+  print =<< Metrics.sampleAll store

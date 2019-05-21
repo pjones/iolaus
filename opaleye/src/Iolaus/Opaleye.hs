@@ -4,6 +4,7 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns             #-}
 {-# LANGUAGE NumericUnderscores         #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE UndecidableInstances       #-}
@@ -54,11 +55,15 @@ import Data.Int (Int64)
 import Data.Pool (Pool)
 import qualified Data.Pool as Pool
 import Data.Profunctor.Product.Default (Default)
+import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 import qualified Database.PostgreSQL.Simple as PostgreSQL
 import Opaleye (FromFields, Select, Insert, Update, Delete)
 import qualified Opaleye as O
+import qualified System.Metrics as Metrics
+import System.Metrics.Counter (Counter)
+import qualified System.Metrics.Counter as Counter
 
 --------------------------------------------------------------------------------
 -- For database migrations:
@@ -69,7 +74,7 @@ import qualified Database.PostgreSQL.Simple.Migration as Migrate
 -- Retry failed queries:
 import Control.Retry
   ( RetryPolicyM
-  , RetryStatus
+  , RetryStatus(..)
   , retrying
   , exponentialBackoff
   , limitRetries
@@ -83,8 +88,10 @@ import Iolaus.Opaleye.Error
 --------------------------------------------------------------------------------
 -- | Run time environment for Opaleye.
 data Opaleye = Opaleye
-  { _pool   :: Pool PostgreSQL.Connection
-  , _config :: Config
+  { _pool         :: Pool PostgreSQL.Connection
+  , _queryCounter :: Maybe Counter
+  , _retryCounter :: Maybe Counter
+  , _config       :: Config
   }
 
 makeClassy ''Opaleye
@@ -113,10 +120,24 @@ instance (MonadIO m, MonadReader r m, HasOpaleye r) => CanOpaleye m where
 
 --------------------------------------------------------------------------------
 -- | Make an 'Opaleye' value to stick into your 'MonadReader'.
-initOpaleye :: (MonadIO m) => Config -> m Opaleye
-initOpaleye c =
+initOpaleye :: (MonadIO m) => Config -> Maybe Metrics.Store -> m Opaleye
+initOpaleye c store =
   Opaleye <$> mkPool c
+          <*> (liftIO $ counter "num_db_queries")
+          <*> (liftIO $ counter "num_db_retries")
           <*> pure c
+  where
+    prefix :: Text
+    prefix =
+      case metricsPrefix c of
+        Just t -> Text.strip $ Text.dropWhileEnd (== '.') t
+        Nothing -> "iolaus.opaleye"
+
+    counter :: Text -> IO (Maybe Counter)
+    counter name =
+      case store of
+        Nothing -> pure Nothing
+        Just s  -> Just <$> Metrics.createCounter (prefix <> "." <> name) s
 
 --------------------------------------------------------------------------------
 -- | Given a configuration object, create a database handle.
@@ -165,7 +186,10 @@ run f = do
     run' :: OpaleyeM (Either PostgreSQL.SqlError a)
     run' = do
       env <- view opaleye
-      liftIO $ retrying (policy $ _config env) shouldRetry (\_ -> go env)
+      liftIO $ retrying (policy $ _config env) shouldRetry $ \rs -> do
+        let counter = if rsIterNumber rs == 0 then _queryCounter else _retryCounter
+        maybe (pure ()) Counter.inc (counter env)
+        go env
 
     go :: Opaleye -> IO (Either PostgreSQL.SqlError a)
     go env = Pool.withResource (view pool env) $ \conn ->

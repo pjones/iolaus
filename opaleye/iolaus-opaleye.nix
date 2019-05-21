@@ -1,5 +1,5 @@
-{ mkDerivation, aeson, base, dhall, filepath, lens, mtl, opaleye
-, postgresql-simple, postgresql-simple-migration
+{ mkDerivation, aeson, base, dhall, ekg-core, filepath, lens, mtl
+, opaleye, postgresql-simple, postgresql-simple-migration
 , product-profunctors, resource-pool, retry, stdenv, text
 }:
 mkDerivation {
@@ -10,14 +10,14 @@ mkDerivation {
   isExecutable = true;
   enableSeparateDataOutput = true;
   libraryHaskellDepends = [
-    aeson base dhall filepath lens mtl opaleye postgresql-simple
-    postgresql-simple-migration product-profunctors resource-pool retry
-    text
+    aeson base dhall ekg-core filepath lens mtl opaleye
+    postgresql-simple postgresql-simple-migration product-profunctors
+    resource-pool retry text
   ];
   executableHaskellDepends = [
-    aeson base dhall filepath lens mtl opaleye postgresql-simple
-    postgresql-simple-migration product-profunctors resource-pool retry
-    text
+    aeson base dhall ekg-core filepath lens mtl opaleye
+    postgresql-simple postgresql-simple-migration product-profunctors
+    resource-pool retry text
   ];
   description = "Common bits of Opaleye that you need in all your apps";
   license = stdenv.lib.licenses.bsd2;
