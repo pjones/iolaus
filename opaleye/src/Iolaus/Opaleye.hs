@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns             #-}
+{-# LANGUAGE NumericUnderscores         #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE UndecidableInstances       #-}
@@ -67,7 +68,7 @@ import qualified Database.PostgreSQL.Simple.Migration as Migrate
 --------------------------------------------------------------------------------
 -- Retry failed queries:
 import Control.Retry
-  ( RetryPolicy
+  ( RetryPolicyM
   , RetryStatus
   , retrying
   , exponentialBackoff
@@ -134,7 +135,8 @@ mkPool Config{connectionString, poolSize, poolTimeoutSec} = do
 -- direct access to the database or to cover a case this library
 -- doesn't accommodate.
 --
--- Considered unsafe since it gives you direct access to IO.
+-- Considered unsafe since it gives you direct access to IO, no
+-- exceptions are caught, and no query retries are performed.
 unsafeRunPg
   :: (CanOpaleye m)
   => (PostgreSQL.Connection -> IO a) -- ^ A function that receives the connection.
@@ -163,7 +165,7 @@ run f = do
     run' :: OpaleyeM (Either PostgreSQL.SqlError a)
     run' = do
       env <- view opaleye
-      liftIO $ retrying policy shouldRetry (\_ -> go env)
+      liftIO $ retrying (policy $ _config env) shouldRetry (\_ -> go env)
 
     go :: Opaleye -> IO (Either PostgreSQL.SqlError a)
     go env = Pool.withResource (view pool env) $ \conn ->
@@ -172,9 +174,10 @@ run f = do
     handleSqlError :: PostgreSQL.SqlError -> IO (Either PostgreSQL.SqlError a)
     handleSqlError = pure . Left
 
-    policy :: RetryPolicy
-    policy = exponentialBackoff 250000 <> -- 0.25s
-             limitRetries 2
+    policy :: Config -> RetryPolicyM IO
+    policy Config{retries, backoff} =
+      exponentialBackoff (maybe 50_000 {- 50ms -} fromIntegral backoff) <>
+      limitRetries (maybe 3 fromIntegral retries)
 
     shouldRetry :: RetryStatus -> Either PostgreSQL.SqlError a -> IO Bool
     shouldRetry _ (Left _) = pure True
