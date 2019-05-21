@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds            #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
@@ -28,11 +29,15 @@ module Iolaus.Opaleye
   , HasOpaleye(..)
   , initOpaleye
   , select
+  , insert
+  , update
+  , delete
   , Config(..)
   , defaultConfig
   , Error(..)
   , AsError(..)
   , migrate
+  , unsafeRunPg
   ) where
 
 --------------------------------------------------------------------------------
@@ -44,13 +49,14 @@ import Control.Monad.Error.Lens (throwing)
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (ReaderT, MonadReader, runReaderT)
+import Data.Int (Int64)
 import Data.Pool (Pool)
 import qualified Data.Pool as Pool
 import Data.Profunctor.Product.Default (Default)
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 import qualified Database.PostgreSQL.Simple as PostgreSQL
-import Opaleye (FromFields, Select)
+import Opaleye (FromFields, Select, Insert, Update, Delete)
 import qualified Opaleye as O
 
 --------------------------------------------------------------------------------
@@ -94,7 +100,7 @@ newtype OpaleyeM a = OpaleyeM
            )
 
 --------------------------------------------------------------------------------
--- | Instances of this class and execute Opaleye operations.
+-- | Instances of this class can execute Opaleye operations.
 class CanOpaleye m where
   liftOpaleye :: OpaleyeM a -> m a
 
@@ -122,6 +128,19 @@ mkPool Config{connectionString, poolSize, poolTimeoutSec} = do
     close   = PostgreSQL.close
     timeout = maybe 120 fromIntegral poolTimeoutSec
     size    = maybe 5   fromIntegral poolSize
+
+--------------------------------------------------------------------------------
+-- | Yields a database connection to a function.  Useful when you need
+-- direct access to the database or to cover a case this library
+-- doesn't accommodate.
+--
+-- Considered unsafe since it gives you direct access to IO.
+unsafeRunPg
+  :: (CanOpaleye m)
+  => (PostgreSQL.Connection -> IO a) -- ^ A function that receives the connection.
+  -> m a                             -- ^ The function's result.
+unsafeRunPg f =
+  liftOpaleye (view (opaleye.pool) >>= liftIO . flip Pool.withResource f)
 
 --------------------------------------------------------------------------------
 -- | Internal function for running Opaleye queries.
@@ -178,9 +197,8 @@ migrate
      -- ^ Produce verbose messages on stdout during the migration.
 
   -> m ()
-     -- ^ Throws an error if there is a migration failure.
 migrate dir verbose = do
-  result <- liftOpaleye (view (opaleye.pool) >>= liftIO . flip Pool.withResource go)
+  result <- unsafeRunPg go
 
   case result of
     Migrate.MigrationSuccess -> pure ()
@@ -198,7 +216,7 @@ migrate dir verbose = do
         Migrate.runMigrations verbose conn ms
 
 --------------------------------------------------------------------------------
--- | Execute a database @SELECT@.
+-- | Execute a database @SELECT@.  This is a wrapper around 'O.runSelect'.
 select
   :: ( CanOpaleye m
      , MonadError e m
@@ -208,3 +226,36 @@ select
   => Select a -- ^ The Opaleye 'Select' to execute.
   -> m [b]    -- ^ The result.
 select s = run (flip O.runSelect s)
+
+--------------------------------------------------------------------------------
+-- | Wrapper around 'O.runInsert_'.
+insert
+  :: ( CanOpaleye m
+     , MonadError e m
+     , AsError e
+     )
+  => Insert a -- ^ The Opaleye 'Insert' to execute.
+  -> m a      -- ^ The result.
+insert i = run (flip O.runInsert_ i)
+
+--------------------------------------------------------------------------------
+-- | Wrapper around 'O.runUpdate_'.
+update
+  :: ( CanOpaleye m
+     , MonadError e m
+     , AsError e
+     )
+  => Update a -- ^ The Opaleye 'Update' to execute.
+  -> m a      -- ^ The result.
+update u = run (flip O.runUpdate_ u)
+
+--------------------------------------------------------------------------------
+-- | Wrapper around 'O.runDelete_'.
+delete
+  :: ( CanOpaleye m
+     , MonadError e m
+     , AsError e
+     )
+  => Delete Int64 -- ^ The Opaleye 'Delete' to execute.
+  -> m Int64      -- ^ The result.
+delete d = run (flip O.runDelete_ d)

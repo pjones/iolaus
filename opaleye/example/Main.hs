@@ -34,9 +34,12 @@ import qualified Data.Text as Text
 import GHC.Generics (Generic)
 import qualified Iolaus.Opaleye as DB
 import Opaleye (Table, Field, table, tableField, selectTable)
+import qualified Opaleye as O
+import qualified Opaleye.Constant as C
 import Opaleye.SqlTypes (SqlText)
 import System.Environment (getEnv)
 import System.FilePath ((</>))
+import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout)
 
 --------------------------------------------------------------------------------
 -- | Access the schema files for the database migrations:
@@ -84,6 +87,17 @@ people = table "people" (pPerson
          })
 
 --------------------------------------------------------------------------------
+-- | Insert a new person into the database.
+createNewPerson :: App ()
+createNewPerson = do
+  fn <- Text.pack <$> liftIO (putStr "Enter your first name: "    >> getLine)
+  ln <- Text.pack <$> liftIO (putStr "And now your family name: " >> getLine)
+
+  let p = Person (C.constant fn) (C.constant ln)
+  _ <- DB.insert $ O.Insert people [p] O.rCount Nothing
+  pure ()
+
+--------------------------------------------------------------------------------
 -- | Example running a database SELECT from within our app's
 -- transformer stack.
 printEveryone :: App ()
@@ -110,11 +124,15 @@ main = do
   connString <- Text.pack <$> getEnv "DB_CONN"
   opaleye <- DB.initOpaleye $ DB.defaultConfig connString
 
+  -- Makes the name prompting in createNewPerson nicer.
+  hSetBuffering stdout NoBuffering
+
   -- Run an action in our transformer stack.  It will migrate the
   -- database then do some database work.
   result <- runApp opaleye $ do
     schemaDir <- (</> "example" </> "schema") <$> liftIO getDataDir
     DB.migrate schemaDir True
+    createNewPerson
     printEveryone
 
   print result
