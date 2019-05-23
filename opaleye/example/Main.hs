@@ -143,6 +143,11 @@ main = do
   -- read the configuration from a file.  Here we'll just grab the
   -- database connection string from the environment and use the
   -- default confutation settings.
+  --
+  -- NOTE: If you are running this example directly from source you
+  -- need to tell Cabal where the source directory is so it can find
+  -- the schema files.  Set the @iolaus_opaleye_datadir@ environment
+  -- variable to the directory containing the @example@ directory.
   config <- DB.defaultConfig . Text.pack <$> getEnv "DB_CONN"
   opaleye <- DB.initOpaleye config (Just store)
 
