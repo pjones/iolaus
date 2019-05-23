@@ -34,7 +34,7 @@ major components of an application.
 Using this library is fairly straight forward:
 
   1. Create your monad transformer stack and then make it an instance
-     of 'AsOpaleyeError', 'HasOpaleye', and 'CanOpaleye'.
+     of 'AsOpaleyeError' and 'HasOpaleye'.
 
   2. Parse a 'Config' value from a configuration file.
 
@@ -172,7 +172,15 @@ newtype Query a = Query
 
 --------------------------------------------------------------------------------
 -- | Instances of this class can execute Opaleye queries.
+--
+-- As long as your transformer stack includes 'MonadIO',
+-- 'MonadReader', and 'HasOpaleye', it should automatically be an
+-- instance of this class.
 class CanOpaleye m where
+  -- | Execute a query outside of a transaction.  To run a query
+  -- inside a transaction use the 'transaction' function instead.
+  --
+  -- 'PostgreSQL.SqlError' exceptions are caught and returned via 'MonadError'.
   liftQuery :: (MonadError e m, AsOpaleyeError e) => Query a -> m a
 
 instance CanOpaleye Query where

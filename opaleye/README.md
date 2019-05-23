@@ -11,7 +11,7 @@ major components of an application.
 Using this library is fairly straight forward:
 
   1. Create your monad transformer stack and then make it an instance
-     of `AsOpaleyeError`, `HasOpaleye`, and `CanOpaleye`.
+     of `AsOpaleyeError` and `HasOpaleye`.
 
   2. Parse a `Config` value from a configuration file.
 
