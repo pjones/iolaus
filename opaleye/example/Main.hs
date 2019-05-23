@@ -24,7 +24,8 @@ License: BSD-2-Clause
 module Main (main) where
 
 --------------------------------------------------------------------------------
-import Control.Lens.TH (makeClassyPrisms)
+-- Imports:
+import Control.Lens.TH (makeClassy, makeClassyPrisms)
 import Control.Monad.Except (ExceptT, MonadError, runExceptT)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (ReaderT, MonadReader, runReaderT)
@@ -49,7 +50,7 @@ import Paths_iolaus_opaleye (getDataDir)
 --------------------------------------------------------------------------------
 -- | Custom errors for this application.
 data AppError = GenericError Text
-              | DatabaseError DB.Error
+              | DatabaseError DB.OpaleyeError
               deriving Show
 
 makeClassyPrisms ''AppError
@@ -57,17 +58,33 @@ makeClassyPrisms ''AppError
 -- Our custom error type needs to hold database errors and this is how
 -- Iolaus can find them.  The @AsError@ class is created by the lens
 -- library.
-instance DB.AsError AppError where
-  _Error = _DatabaseError
+instance DB.AsOpaleyeError AppError where
+  _OpaleyeError = _DatabaseError
+
+
+--------------------------------------------------------------------------------
+-- | A custom reader environment for this application.
+data AppEnv = AppEnv
+  { _db        :: DB.Opaleye -- ^ The Opaleye run time.
+  , _something :: Text       -- ^ Example value.
+  }
+
+makeClassy ''AppEnv
+
+-- Iolaus needs to know how to get the 'Opaleye' environment out of
+-- our application's reader environment.  This instance will tell it
+-- how to do that.
+instance DB.HasOpaleye AppEnv where
+  opaleye = db
 
 --------------------------------------------------------------------------------
 -- | A custom transformer stack for your application:
 newtype App a = App
-  { unApp :: ExceptT AppError (ReaderT DB.Opaleye IO) a }
+  { unApp :: ExceptT AppError (ReaderT AppEnv IO) a }
   deriving ( Functor
            , Applicative
            , Monad
-           , MonadReader DB.Opaleye
+           , MonadReader AppEnv
            , MonadError AppError
            , MonadIO
            )
@@ -91,11 +108,11 @@ people = table "people" (pPerson
 -- | Insert a new person into the database.
 createNewPerson :: App ()
 createNewPerson = do
-  fn <- Text.pack <$> liftIO (putStr "Enter your first name: "    >> getLine)
-  ln <- Text.pack <$> liftIO (putStr "And now your family name: " >> getLine)
+  fn <- Text.pack <$> liftIO (putStr "Enter your given/first name: "    >> getLine)
+  ln <- Text.pack <$> liftIO (putStr "And now your family/last name: " >> getLine)
 
   let p = Person (C.constant fn) (C.constant ln)
-  _ <- DB.insert $ O.Insert people [p] O.rCount Nothing
+  _ <- DB.liftQuery (DB.insert $ O.Insert people [p] O.rCount Nothing)
   pure ()
 
 --------------------------------------------------------------------------------
@@ -103,7 +120,7 @@ createNewPerson = do
 -- transformer stack.
 printEveryone :: App ()
 printEveryone = do
-    ps <- DB.select $ selectTable people
+    ps <- DB.liftQuery (DB.select $ selectTable people)
     mapM_ printPerson ps
 
   where
@@ -112,8 +129,8 @@ printEveryone = do
 
 --------------------------------------------------------------------------------
 -- | Unwind the transformer stack and get back to IO.
-runApp :: DB.Opaleye -> App a -> IO (Either AppError a)
-runApp opaleye = flip runReaderT opaleye . runExceptT . unApp
+runApp :: AppEnv -> App a -> IO (Either AppError a)
+runApp env = flip runReaderT env . runExceptT . unApp
 
 --------------------------------------------------------------------------------
 main :: IO ()
@@ -134,7 +151,7 @@ main = do
 
   -- Run an action in our transformer stack.  It will migrate the
   -- database then do some database work.
-  result <- runApp opaleye $ do
+  result <- runApp (AppEnv opaleye "Something") $ do
     schemaDir <- (</> "example" </> "schema") <$> liftIO getDataDir
     DB.migrate schemaDir True
     createNewPerson

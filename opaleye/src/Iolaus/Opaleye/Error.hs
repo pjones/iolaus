@@ -17,8 +17,8 @@ License: BSD-2-Clause
 
 -}
 module Iolaus.Opaleye.Error
-  ( Error(..)
-  , AsError(..)
+  ( OpaleyeError(..)
+  , AsOpaleyeError(..)
   ) where
 
 --------------------------------------------------------------------------------
@@ -29,10 +29,14 @@ import qualified Database.PostgreSQL.Simple as PostgreSQL
 
 --------------------------------------------------------------------------------
 -- | Database errors.
-data Error = SqlError PostgreSQL.SqlError
-           | QueryError PostgreSQL.QueryError
-           | ResultError PostgreSQL.ResultError
-           | MigrationError Text
-  deriving (Eq, Show)
+data OpaleyeError = SqlError PostgreSQL.SqlError
+                    -- ^ A possibly recoverable error.  (Note: this
+                    -- does not represent a SQL syntax error, but
+                    -- rather a problem running the SQL statement.)
 
-makeClassyPrisms ''Error
+                  | MigrationError Text
+                    -- ^ An error occurred during a database migration.
+
+                  deriving (Eq, Show)
+
+makeClassyPrisms ''OpaleyeError
