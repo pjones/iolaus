@@ -2,5 +2,9 @@
 , haskell ? pkgs.haskellPackages
 }:
 
-# FIXME:
-import ./opaleye { inherit pkgs haskell; }
+let
+  overlay = import ./overlay.nix { inherit pkgs haskell; };
+in
+{
+  iolaus-opaleye = overlay.iolaus-opaleye;
+}
