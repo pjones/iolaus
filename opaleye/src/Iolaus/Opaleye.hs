@@ -218,7 +218,7 @@ initOpaleye c store =
 --------------------------------------------------------------------------------
 -- | Given a configuration object, create a database handle.
 mkPool :: (MonadIO m) => Config -> m (Pool PostgreSQL.Connection)
-mkPool Config{connectionString, poolSize, poolTimeoutSec} = do
+mkPool Config{connectionString, poolSize, poolTimeoutSec} =
     liftIO (Pool.createPool open close 1 timeout size)
   where
     constr  = Text.encodeUtf8 connectionString

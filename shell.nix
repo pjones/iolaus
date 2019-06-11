@@ -4,10 +4,11 @@
 let
   nix-hs-src = fetchGit {
     url = "https://code.devalot.com/pjones/nix-hs.git";
-    rev = "4a9ea2c8c6712ae3cb5892bc74dc051906535238";
+    rev = "0211a56b726d6ecdc45f41239e0f3fd15ba3bc08";
   };
 
   nix-hs = (import "${nix-hs-src}/default.nix" {inherit pkgs;});
+  haskell = import ./overlay.nix { inherit pkgs; };
 
 in
 
@@ -15,13 +16,16 @@ pkgs.mkShell {
   buildInputs = with pkgs; [
 
     # Haskell Dependencies:
-    haskellPackages.ghc
-    haskellPackages.cabal-install
+    (haskell.ghcWithPackages (p: with p; [
+      cabal-install
+      hasktags
+      hlint
+      hoogle
+      # cabal-dependency-licenses
 
-    # For IDEs:
+    ] ++ p.iolaus-opaleye.propagatedBuildInputs))
+
+    # Helper for incremental builds:
     nix-hs
-    haskellPackages.hoogle
-    haskellPackages.hlint
-    # haskellPackages.cabal-dependency-licenses
   ];
 }
