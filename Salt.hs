@@ -30,7 +30,6 @@ module Sthenauth.Crypto.Salt
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import Crypto.Error (CryptoError(CryptoError_SaltTooSmall))
 import Crypto.Random (MonadRandom(..))
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.ByteString.Char8 (ByteString)
@@ -39,6 +38,7 @@ import qualified Data.ByteString.Char8 as ByteString
 --------------------------------------------------------------------------------
 -- Project Imports:
 import Sthenauth.Crypto.Encoding (Encoding(..))
+import Sthenauth.Crypto.Error (CryptoError(..))
 
 --------------------------------------------------------------------------------
 -- | A binary salt that should only be used for a single secret.
@@ -68,7 +68,7 @@ newtype SharedSalt = SharedSalt Salt
 salt :: ByteString -> Either CryptoError Salt
 salt bs = if ByteString.length bs >= recommended
              then Right (Salt bs)
-             else Left CryptoError_SaltTooSmall
+             else Left InvalidSaltLength
 
 --------------------------------------------------------------------------------
 -- | Convert a 'ByteString' into 'SharedSalt'.

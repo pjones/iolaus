@@ -31,7 +31,6 @@ module Sthenauth.Crypto.Internal.Key
 --------------------------------------------------------------------------------
 -- Library Imports:
 import Crypto.Cipher.Types (Cipher(cipherKeySize), KeySizeSpecifier(..))
-import Crypto.Error (CryptoError(CryptoError_KeySizeInvalid))
 import Crypto.Random (MonadRandom(..))
 import Data.Aeson (FromJSON(..))
 import Data.ByteString.Char8 (ByteString)
@@ -44,6 +43,7 @@ import qualified Dhall
 -- Project Imports:
 import Sthenauth.Crypto.Encoding (Encoding(..))
 import qualified Sthenauth.Crypto.Encoding as Encoding
+import Sthenauth.Crypto.Error (CryptoError(..))
 
 --------------------------------------------------------------------------------
 -- | Type alias to remind you that a key can't be used for encryption.
@@ -68,14 +68,14 @@ instance FromJSON (Key Unchecked) where
 -- | Discover the appropriate key size for a symmetric cipher.
 --
 -- >>> keySize (undefined :: AES256)
--- 32 
+-- 32
 keySize :: (Cipher c) => c -> Int
-keySize c = 
+keySize c =
   case cipherKeySize c of
     KeySizeRange _ n -> n
     KeySizeFixed n   -> n
     KeySizeEnum ns   -> foldr max 32 ns
-    
+
 --------------------------------------------------------------------------------
 -- | Pack a 'ByteString' into a key.
 pack :: ByteString -> Key Unchecked
@@ -88,10 +88,10 @@ pack = Key
 -- network it won't be tied to any particular cipher.  Instead it will
 -- be of type @Key Unchecked@.
 convert :: forall c. (Cipher c) => Key Unchecked -> Either CryptoError (Key c)
-convert (Key bs) = 
-  if ByteString.length bs == keySize (undefined :: c) 
+convert (Key bs) =
+  if ByteString.length bs == keySize (undefined :: c)
      then Right (Key bs)
-     else Left CryptoError_KeySizeInvalid
+     else Left InvalidKeyLength
 
 --------------------------------------------------------------------------------
 -- | Generate a key that is appropriate for the given cipher.
@@ -101,4 +101,4 @@ generate = Key <$> getRandomBytes (keySize (undefined :: c))
 --------------------------------------------------------------------------------
 -- | Encode a key for writing to a safe location.
 encode :: Key c -> Text
-encode = Encoding.encode . Encoding . getKey 
+encode = Encoding.encode . Encoding . getKey

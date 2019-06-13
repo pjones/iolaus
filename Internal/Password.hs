@@ -50,10 +50,6 @@ import Data.String (IsString(..))
 import Data.Text (Text, strip)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Text.ICU.Normalize (NormalizationMode(NFKC), normalize)
-import qualified Database.Beam as Beam
-import qualified Database.Beam.Backend.SQL as Beam
-import Database.Beam.Postgres (Postgres, PgJSON(..))
-import Database.Beam.Postgres.Syntax (PgValueSyntax)
 import GHC.Generics (Generic)
 
 --------------------------------------------------------------------------------
@@ -123,14 +119,6 @@ instance FromJSON (Password Hashed) where
     Password <$> (Hashed   <$> v .: "type")
              <*> (getBytes <$> v .: "hash")
   parseJSON invalid = Aeson.typeMismatch "Password" invalid
-
---------------------------------------------------------------------------------
-instance Beam.FromBackendRow Postgres (Password Hashed) where
-  fromBackendRow = (\(PgJSON x) -> x) <$> Beam.fromBackendRow
-
---------------------------------------------------------------------------------
-instance Beam.HasSqlValueSyntax PgValueSyntax (Password Hashed) where
-  sqlValueSyntax = Beam.sqlValueSyntax . PgJSON
 
 --------------------------------------------------------------------------------
 -- | Construct an insecure password.  This type of password has no

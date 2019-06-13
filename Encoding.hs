@@ -32,10 +32,6 @@ import Data.ByteString.Char8 (ByteString)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
-import qualified Database.Beam as Beam
-import qualified Database.Beam.Backend.SQL as Beam
-import Database.Beam.Postgres (Postgres)
-import Database.Beam.Postgres.Syntax (PgValueSyntax)
 
 --------------------------------------------------------------------------------
 -- | Store binary data as Base64 encoded text.
@@ -49,18 +45,10 @@ instance ToJSON Encoding where
  -------------------------------------------------------------------------------
 instance FromJSON Encoding where
   parseJSON = fmap decode . parseJSON
- 
+
 --------------------------------------------------------------------------------
 instance Show Encoding where
   show = Text.unpack . encode
-
---------------------------------------------------------------------------------
-instance Beam.FromBackendRow Postgres Encoding where
-  fromBackendRow = decode <$> Beam.fromBackendRow
-
---------------------------------------------------------------------------------
-instance Beam.HasSqlValueSyntax PgValueSyntax Encoding where
-  sqlValueSyntax = Beam.sqlValueSyntax . encode
 
 --------------------------------------------------------------------------------
 -- | Encode a binary value as text (Base64).

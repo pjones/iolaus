@@ -37,10 +37,6 @@ import qualified Data.ByteString as ByteString
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Text.ICU.Normalize (NormalizationMode(NFKC), normalize)
-import qualified Database.Beam as Beam
-import qualified Database.Beam.Backend.SQL as Beam
-import Database.Beam.Postgres (Postgres)
-import Database.Beam.Postgres.Syntax (PgValueSyntax)
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -52,14 +48,6 @@ import Sthenauth.Crypto.Salt (Salt(..), SharedSalt(..))
 -- | A type that represents a salted and hashed value.
 newtype SaltedHash a = SaltedHash { getHash :: Text }
   deriving (Eq, Show)
-
---------------------------------------------------------------------------------
-instance Beam.FromBackendRow Postgres (SaltedHash a) where
-  fromBackendRow = SaltedHash <$> Beam.fromBackendRow
-
---------------------------------------------------------------------------------
-instance Beam.HasSqlValueSyntax PgValueSyntax (SaltedHash a) where
-  sqlValueSyntax = Beam.sqlValueSyntax . getHash
 
 --------------------------------------------------------------------------------
 -- | Types that can be salted and hashed.

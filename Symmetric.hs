@@ -30,21 +30,18 @@ module Sthenauth.Crypto.Symmetric
 -- Library Imports:
 import Crypto.Cipher.AES (AES256)
 import qualified Crypto.Cipher.Types as Cryptonite
-import Crypto.Error (CryptoError, eitherCryptoError)
+import Crypto.Error (eitherCryptoError)
 import Crypto.Random (MonadRandom(..))
+import Data.Bifunctor (first)
 import Data.Binary (Binary)
 import qualified Data.Binary as Binary
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
 import qualified Data.ByteString.Lazy as LBS
-import qualified Database.Beam as Beam
-import qualified Database.Beam.Backend.SQL as Beam
-import Database.Beam.Postgres (Postgres)
-import Database.Beam.Postgres.Syntax (PgValueSyntax)
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Sthenauth.Crypto.Encoding (Encoding(..))
+import Sthenauth.Crypto.Error (CryptoError, wrappedCryptoError)
 import Sthenauth.Crypto.Internal.IV (IV(..))
 import qualified Sthenauth.Crypto.Internal.IV as IV
 import Sthenauth.Crypto.Internal.Key (Key(..))
@@ -52,14 +49,6 @@ import Sthenauth.Crypto.Internal.Key (Key(..))
 --------------------------------------------------------------------------------
 newtype Secret a = Secret { getSecret :: ByteString }
   deriving (Eq, Show)
-
---------------------------------------------------------------------------------
-instance Beam.FromBackendRow Postgres (Secret a) where
-  fromBackendRow = (\(Encoding bs) -> Secret bs) <$> Beam.fromBackendRow
-
---------------------------------------------------------------------------------
-instance Beam.HasSqlValueSyntax PgValueSyntax (Secret a) where
-  sqlValueSyntax = Beam.sqlValueSyntax . Encoding . getSecret
 
 --------------------------------------------------------------------------------
 -- | Encrypt a secret.
@@ -98,7 +87,7 @@ encrypt'
   -- ^ If successful, the encrypted secret.
 encrypt' iv (Key key) x = do
   cIV     <- IV.toCryptonite iv
-  context <- eitherCryptoError $ Cryptonite.cipherInit key
+  context <- first wrappedCryptoError $ eitherCryptoError $ Cryptonite.cipherInit key
 
   let bs = Cryptonite.ctrCombine context cIV (LBS.toStrict $ Binary.encode x)
   pure $ Secret (getIV iv <> bs) -- Store IV in the secret.
@@ -122,7 +111,7 @@ decrypt (Key key) (Secret bs) = do
       secret = ByteString.drop size bs
 
   cIV <- IV.toCryptonite iv
-  context <- eitherCryptoError $ Cryptonite.cipherInit key
+  context <- first wrappedCryptoError $ eitherCryptoError $ Cryptonite.cipherInit key
 
   let bin = Cryptonite.ctrCombine context cIV secret
       x   = Binary.decode (LBS.fromStrict bin)
