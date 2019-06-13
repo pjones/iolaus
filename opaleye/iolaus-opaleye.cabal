@@ -59,6 +59,7 @@ library
   exposed-modules:
     Iolaus.Opaleye
     Iolaus.Opaleye.JSON
+    Iolaus.Opaleye.Newtype
 
   other-modules:
     Iolaus.Opaleye.Config
@@ -73,3 +74,16 @@ executable example
 
   other-modules:
     Paths_iolaus_opaleye
+
+--------------------------------------------------------------------------------
+test-suite test
+  import: options, dependencies
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Main.hs
+  build-depends: iolaus-opaleye
+               , tasty          >= 1.1 &&  < 1.3
+               , tasty-hunit    >= 0.10 && < 0.11
+
+  other-modules:
+    Iolaus.Test.Newtype
