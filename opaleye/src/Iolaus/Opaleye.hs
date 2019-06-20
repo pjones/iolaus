@@ -71,6 +71,7 @@ module Iolaus.Opaleye
   -- The 'PostgreSQL.SqlError' exception will be caught and turned
   -- into a 'MonadError' error.
   , CanOpaleye(..)
+  , MonadOpaleye
 
   -- * Reader Environment
   , initOpaleye
@@ -171,23 +172,31 @@ newtype Query a = Query
            )
 
 --------------------------------------------------------------------------------
--- | Instances of this class can execute Opaleye queries.
+-- | A constraint alias to make typing shorter.
 --
--- As long as your transformer stack includes 'MonadIO',
--- 'MonadReader', and 'HasOpaleye', it should automatically be an
--- instance of this class.
-class CanOpaleye m where
+-- If your application's monad implements these classes plus 'MonadIO'
+-- it will automatically be an instance of 'CanOpaleye'.
+type MonadOpaleye e r m =
+  ( MonadError e m
+  , AsOpaleyeError e
+  , MonadReader r m
+  , HasOpaleye r
+  )
+
+--------------------------------------------------------------------------------
+-- | Instances of this class can execute Opaleye queries.
+class (Monad m) => CanOpaleye m where
   -- | Execute a query outside of a transaction.  To run a query
   -- inside a transaction use the 'transaction' function instead.
   --
   -- 'PostgreSQL.SqlError' exceptions are caught and returned via 'MonadError'.
-  liftQuery :: (MonadError e m, AsOpaleyeError e) => Query a -> m a
+  liftQuery :: Query a -> m a
 
 instance CanOpaleye Query where
   liftQuery = id
 
 -- Default implementation:
-instance (MonadIO m, MonadReader r m, HasOpaleye r) => CanOpaleye m where
+instance (Monad m, MonadIO m, MonadOpaleye e r m) => CanOpaleye m where
   liftQuery q = do
     env <- view opaleye
     (result :: Either PostgreSQL.SqlError a) <-
@@ -325,10 +334,7 @@ delete d = wrap (`O.runDelete_` d)
 --
 -- For complete details, please read the documentation for 'transaction''.
 transaction
-  :: ( MonadError e m
-     , CanOpaleye m
-     , AsOpaleyeError e
-     )
+  :: ( CanOpaleye m )
   => Query a
   -> m a
 transaction = transaction' PostgreSQL.defaultTransactionMode
@@ -350,11 +356,7 @@ transaction = transaction' PostgreSQL.defaultTransactionMode
 --   * If all retries are exhausted 'throwError' will be used to
 --     return an error via the 'MonadError' constraint.
 transaction'
-  :: forall e m a.
-     ( MonadError e m
-     , CanOpaleye m
-     , AsOpaleyeError e
-     )
+  :: forall m a. ( CanOpaleye m )
   => TransactionMode
   -> Query a
   -> m a

@@ -106,10 +106,8 @@ people = table "people" (pPerson
 
 --------------------------------------------------------------------------------
 -- | Insert a new person into the database.
-createNewPerson :: App ()
-createNewPerson = do
-  fn <- Text.pack <$> liftIO (putStr "Enter your given/first name: "    >> getLine)
-  ln <- Text.pack <$> liftIO (putStr "And now your family/last name: " >> getLine)
+createNewPerson :: (DB.CanOpaleye m) => Text -> Text -> m ()
+createNewPerson fn ln = do
 
   let p = Person (C.constant fn) (C.constant ln)
   _ <- DB.liftQuery (DB.insert $ O.Insert people [p] O.rCount Nothing)
@@ -118,14 +116,8 @@ createNewPerson = do
 --------------------------------------------------------------------------------
 -- | Example running a database SELECT from within our app's
 -- transformer stack.
-printEveryone :: App ()
-printEveryone = do
-    ps <- DB.liftQuery (DB.select $ selectTable people)
-    mapM_ printPerson ps
-
-  where
-    printPerson :: Person' Text -> App ()
-    printPerson = liftIO . print
+fetchEveryone :: (DB.CanOpaleye m) => m [Person' Text]
+fetchEveryone = DB.liftQuery (DB.select $ selectTable people)
 
 --------------------------------------------------------------------------------
 -- | Unwind the transformer stack and get back to IO.
@@ -159,8 +151,12 @@ main = do
   result <- runApp (AppEnv opaleye "Something") $ do
     schemaDir <- (</> "example" </> "schema") <$> liftIO getDataDir
     DB.migrate schemaDir True
-    createNewPerson
-    printEveryone
+
+    fn <- Text.pack <$> liftIO (putStr "Enter your given/first name: "   >> getLine)
+    ln <- Text.pack <$> liftIO (putStr "And now your family/last name: " >> getLine)
+
+    createNewPerson fn ln
+    fetchEveryone >>= mapM_ (liftIO . print)
 
   -- Print out the result (which should be @Right ()@) and the EKG store:
   print result
