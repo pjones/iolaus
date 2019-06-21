@@ -38,6 +38,17 @@ import qualified Data.Binary as Binary
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
 import qualified Data.ByteString.Lazy as LBS
+import Data.Profunctor.Product.Default (Default(def))
+import Database.PostgreSQL.Simple.FromField (FromField(..))
+
+import Opaleye
+  ( Constant(..)
+  , Column
+  , QueryRunnerColumnDefault(..)
+  , SqlBytea
+  , fieldQueryRunnerColumn
+  , toFields
+  )
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -49,6 +60,16 @@ import Sthenauth.Crypto.Internal.Key (Key(..))
 --------------------------------------------------------------------------------
 newtype Secret a = Secret { getSecret :: ByteString }
   deriving (Eq, Show)
+
+--------------------------------------------------------------------------------
+instance FromField (Secret a) where
+  fromField f b = Secret <$> fromField f b
+
+instance QueryRunnerColumnDefault SqlBytea (Secret a) where
+  queryRunnerColumnDefault = fieldQueryRunnerColumn
+
+instance Default Constant (Secret a) (Column SqlBytea) where
+  def = Constant (toFields . getSecret)
 
 --------------------------------------------------------------------------------
 -- | Encrypt a secret.

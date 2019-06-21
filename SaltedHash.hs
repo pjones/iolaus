@@ -1,4 +1,7 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE TemplateHaskell            #-}
 
 {-|
 
@@ -34,9 +37,20 @@ import qualified Crypto.Hash as Hash
 import qualified Data.ByteArray as ByteArray
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as ByteString
+import Data.Profunctor.Product.Default (Default(def))
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Text.ICU.Normalize (NormalizationMode(NFKC), normalize)
+import Database.PostgreSQL.Simple.FromField (FromField(..))
+
+import Opaleye
+  ( Constant(..)
+  , Column
+  , QueryRunnerColumnDefault(..)
+  , SqlText
+  , fieldQueryRunnerColumn
+  , toFields
+  )
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -48,6 +62,16 @@ import Sthenauth.Crypto.Salt (Salt(..), SharedSalt(..))
 -- | A type that represents a salted and hashed value.
 newtype SaltedHash a = SaltedHash { getHash :: Text }
   deriving (Eq, Show)
+
+--------------------------------------------------------------------------------
+instance FromField (SaltedHash a) where
+  fromField f b = SaltedHash <$> fromField f b
+
+instance QueryRunnerColumnDefault SqlText (SaltedHash a) where
+  queryRunnerColumnDefault = fieldQueryRunnerColumn
+
+instance Default Constant (SaltedHash a) (Column SqlText) where
+  def = Constant (toFields . getHash)
 
 --------------------------------------------------------------------------------
 -- | Types that can be salted and hashed.

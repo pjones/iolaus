@@ -1,3 +1,8 @@
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE TemplateHaskell            #-}
+
 {-|
 
 Copyright:
@@ -30,10 +35,12 @@ module Sthenauth.Crypto.Salt
 
 --------------------------------------------------------------------------------
 -- Library Imports:
+import Iolaus.Opaleye.Newtype (makeNewtypeInstances)
 import Crypto.Random (MonadRandom(..))
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
+import Opaleye.SqlTypes (SqlBytea)
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -42,8 +49,9 @@ import Sthenauth.Crypto.Error (CryptoError(..))
 
 --------------------------------------------------------------------------------
 -- | A binary salt that should only be used for a single secret.
-newtype Salt = Salt { getSalt :: ByteString }
-  deriving Eq
+newtype Salt = Salt { getSalt :: ByteString } deriving Eq
+
+makeNewtypeInstances ''Salt ''SqlBytea
 
 --------------------------------------------------------------------------------
 instance Show Salt where

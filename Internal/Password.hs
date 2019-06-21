@@ -46,11 +46,22 @@ import qualified Data.Aeson.Types as Aeson
 import Data.Bool (bool)
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
+import Data.Profunctor.Product.Default (Default(..))
 import Data.String (IsString(..))
 import Data.Text (Text, strip)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Text.ICU.Normalize (NormalizationMode(NFKC), normalize)
+import Database.PostgreSQL.Simple.FromField (FromField(..), fromJSONField)
 import GHC.Generics (Generic)
+
+import Opaleye
+  ( QueryRunnerColumnDefault(..)
+  , Constant(..)
+  , Column
+  , PGJson
+  , fieldQueryRunnerColumn
+  , pgValueJSON
+  )
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -119,6 +130,16 @@ instance FromJSON (Password Hashed) where
     Password <$> (Hashed   <$> v .: "type")
              <*> (getBytes <$> v .: "hash")
   parseJSON invalid = Aeson.typeMismatch "Password" invalid
+
+--------------------------------------------------------------------------------
+instance FromField (Password Hashed) where
+  fromField = fromJSONField
+
+instance QueryRunnerColumnDefault PGJson (Password Hashed) where
+  queryRunnerColumnDefault = fieldQueryRunnerColumn
+
+instance Default Constant (Password Hashed) (Column PGJson) where
+  def = Constant (pgValueJSON . Aeson.toJSON)
 
 --------------------------------------------------------------------------------
 -- | Construct an insecure password.  This type of password has no
