@@ -1,10 +1,6 @@
-{ pkgs    ? import <nixpkgs> { }
-, haskell ? pkgs.haskellPackages
+{ pkgs ? import <nixpkgs> { }
 }:
 
-let
-  overlay = import ./overlay.nix { inherit pkgs haskell; };
-in
 {
-  iolaus-opaleye = overlay.iolaus-opaleye;
+  iolaus-opaleye = import ./opaleye { inherit pkgs; };
 }

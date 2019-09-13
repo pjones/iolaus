@@ -1,5 +1,14 @@
-{ pkgs    ? import <nixpkgs> {}
-, haskell ? pkgs.haskellPackages
+{ pkgs ? import <nixpkgs> { }
 }:
 
-haskell.callPackage ./iolaus-opaleye.nix { }
+let
+  nix-hs-src = fetchGit {
+    url = "https://code.devalot.com/open/nix-hs.git";
+    rev = "2003332a1e8e518b54e6143f9a9467a8a05abca4";
+  };
+
+  nix-hs = import "${nix-hs-src}/default.nix" { inherit pkgs; };
+
+in nix-hs {
+  cabal = ./iolaus-opaleye.cabal;
+}
