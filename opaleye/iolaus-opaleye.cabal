@@ -14,7 +14,9 @@ category:            Application
 -- bug-reports:
 
 --------------------------------------------------------------------------------
-extra-source-files:  CHANGELOG.md
+extra-source-files:
+  README.md
+  CHANGELOG.md
 
 --------------------------------------------------------------------------------
 -- Files needed at run time.
