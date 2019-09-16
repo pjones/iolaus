@@ -71,3 +71,18 @@ library
     Iolaus.Crypto.Internal.Key
     Iolaus.Crypto.Internal.Password
     Iolaus.Crypto.Password.Settings
+
+--------------------------------------------------------------------------------
+test-suite test
+  import: options, dependencies
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Main.hs
+  build-depends: hedgehog       >= 0.6 && < 0.7
+               , iolaus-crypto
+               , tasty          >= 1.1 && < 1.3
+               , tasty-hedgehog >= 0.2 && < 0.3
+
+  other-modules:
+    Iolaus.Test.Crypto.Password
+    Iolaus.Test.Crypto.Symmetric

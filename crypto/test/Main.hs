@@ -13,27 +13,19 @@ Copyright:
 
 License: BSD-2-Clause
 
-Secure storage of secrets while they are at rest (stored in a database).
-
 -}
-module Iolaus.Crypto.Password
-  ( -- * Creating Passwords
-    Password
-  , Clear
-  , Hashed
-  , password
-  , hash
-  , hash'
-
-    -- * Verifying Passwords
-  , VerifyStatus(..)
-  , verify
-
-    -- * Controlling Password Generation.
-  , Settings(..)
-  , defaultSettings
-  ) where
+module Main (main) where
 
 --------------------------------------------------------------------------------
-import Iolaus.Crypto.Internal.Password
-import Iolaus.Crypto.Password.Settings
+import Test.Tasty
+
+--------------------------------------------------------------------------------
+import qualified Iolaus.Test.Crypto.Password as Password
+import qualified Iolaus.Test.Crypto.Symmetric as Symmetric
+
+--------------------------------------------------------------------------------
+main :: IO ()
+main = defaultMain $ testGroup "Tests"
+  [ Password.run
+  , Symmetric.run
+  ]

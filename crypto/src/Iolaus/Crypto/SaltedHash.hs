@@ -16,7 +16,7 @@ Copyright:
   modified, propagated, or distributed except according to the terms
   contained in the LICENSE file.
 
-License: Apache-2.0
+License: BSD-2-Clause
 
 Salted hashes are a way of generating deterministic lookup keys.  For
 example, storing an email address in the database as a SHA3 hash

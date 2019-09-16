@@ -11,7 +11,7 @@ Copyright:
   modified, propagated, or distributed except according to the terms
   contained in the LICENSE file.
 
-License: Apache-2.0
+License: BSD-2-Clause
 
 Initialization vectors for symmetric ciphers.
 
