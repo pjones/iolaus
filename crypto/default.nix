@@ -11,4 +11,8 @@ let
 
 in nix-hs {
   cabal = ./iolaus-crypto.cabal;
+
+  overrides = lib: self: super: with lib; {
+    iolaus-opaleye = import ../opaleye { inherit pkgs; };
+  };
 }

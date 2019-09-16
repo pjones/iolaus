@@ -4,11 +4,11 @@
 {-|
 
 Copyright:
-  This file is part of the package sthenauth. It is subject to the
+  This file is part of the package iolaus. It is subject to the
   license terms in the LICENSE file found in the top-level directory
   of this distribution and at:
 
-    git://code.devalot.com/sthenauth.git
+    https://code.devalot.com/open/iolaus
 
   No part of this package, including this file, may be copied,
   modified, propagated, or distributed except according to the terms
@@ -19,7 +19,7 @@ License: Apache-2.0
 Encrypting and decrypting with a symmetric cipher (AES256).
 
 -}
-module Sthenauth.Crypto.Symmetric
+module Iolaus.Crypto.Symmetric
   ( Secret
   , encrypt
   , encrypt'
@@ -52,10 +52,10 @@ import Opaleye
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Sthenauth.Crypto.Error (CryptoError, wrappedCryptoError)
-import Sthenauth.Crypto.Internal.IV (IV(..))
-import qualified Sthenauth.Crypto.Internal.IV as IV
-import Sthenauth.Crypto.Internal.Key (Key(..))
+import Iolaus.Crypto.Error (CryptoError, wrappedCryptoError)
+import Iolaus.Crypto.Internal.IV (IV(..))
+import qualified Iolaus.Crypto.Internal.IV as IV
+import Iolaus.Crypto.Internal.Key (Key(..))
 
 --------------------------------------------------------------------------------
 newtype Secret a = Secret { getSecret :: ByteString }

@@ -4,11 +4,11 @@
 {-|
 
 Copyright:
-  This file is part of the package sthenauth. It is subject to the
+  This file is part of the package iolaus. It is subject to the
   license terms in the LICENSE file found in the top-level directory
   of this distribution and at:
 
-    git://code.devalot.com/sthenauth.git
+    https://code.devalot.com/open/iolaus
 
   No part of this package, including this file, may be copied,
   modified, propagated, or distributed except according to the terms
@@ -19,7 +19,7 @@ License: Apache-2.0
 Encryption keys.
 
 -}
-module Sthenauth.Crypto.Internal.Key
+module Iolaus.Crypto.Internal.Key
   ( Key(..)
   , Unchecked
   , pack
@@ -41,9 +41,9 @@ import qualified Dhall
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Sthenauth.Crypto.Encoding (Encoding(..))
-import qualified Sthenauth.Crypto.Encoding as Encoding
-import Sthenauth.Crypto.Error (CryptoError(..))
+import Iolaus.Crypto.Encoding (Encoding(..))
+import qualified Iolaus.Crypto.Encoding as Encoding
+import Iolaus.Crypto.Error (CryptoError(..))
 
 --------------------------------------------------------------------------------
 -- | Type alias to remind you that a key can't be used for encryption.

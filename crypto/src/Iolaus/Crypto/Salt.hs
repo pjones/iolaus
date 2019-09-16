@@ -6,11 +6,11 @@
 {-|
 
 Copyright:
-  This file is part of the package sthenauth. It is subject to the
+  This file is part of the package iolaus. It is subject to the
   license terms in the LICENSE file found in the top-level directory
   of this distribution and at:
 
-    git://code.devalot.com/sthenauth.git
+    https://code.devalot.com/open/iolaus
 
   No part of this package, including this file, may be copied,
   modified, propagated, or distributed except according to the terms
@@ -22,7 +22,7 @@ Salt: random data mixed with a password to secure it while in rest
 (i.e. stored in a database).
 
 -}
-module Sthenauth.Crypto.Salt
+module Iolaus.Crypto.Salt
   ( Salt
   , SharedSalt(..)
   , getSalt
@@ -44,8 +44,8 @@ import Opaleye.SqlTypes (SqlBytea)
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Sthenauth.Crypto.Encoding (Encoding(..))
-import Sthenauth.Crypto.Error (CryptoError(..))
+import Iolaus.Crypto.Encoding (Encoding(..))
+import Iolaus.Crypto.Error (CryptoError(..))
 
 --------------------------------------------------------------------------------
 -- | A binary salt that should only be used for a single secret.

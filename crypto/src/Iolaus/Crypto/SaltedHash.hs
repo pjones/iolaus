@@ -6,11 +6,11 @@
 {-|
 
 Copyright:
-  This file is part of the package sthenauth. It is subject to the
+  This file is part of the package iolaus. It is subject to the
   license terms in the LICENSE file found in the top-level directory
   of this distribution and at:
 
-    git://code.devalot.com/sthenauth.git
+    https://code.devalot.com/open/iolaus
 
   No part of this package, including this file, may be copied,
   modified, propagated, or distributed except according to the terms
@@ -24,7 +24,7 @@ instead of the raw text.  But in this case the hash is salted with the
 system-wide salt to mitigate brute-force attacks against the database.
 
 -}
-module Sthenauth.Crypto.SaltedHash
+module Iolaus.Crypto.SaltedHash
   ( SaltedHash
   , saltedHash
   , saltedHash'
@@ -54,9 +54,9 @@ import Opaleye
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Sthenauth.Crypto.Encoding (Encoding(..))
-import qualified Sthenauth.Crypto.Encoding as Encoding
-import Sthenauth.Crypto.Salt (Salt(..), SharedSalt(..))
+import Iolaus.Crypto.Encoding (Encoding(..))
+import qualified Iolaus.Crypto.Encoding as Encoding
+import Iolaus.Crypto.Salt (Salt(..), SharedSalt(..))
 
 --------------------------------------------------------------------------------
 -- | A type that represents a salted and hashed value.

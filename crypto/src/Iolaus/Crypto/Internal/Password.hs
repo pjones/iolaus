@@ -8,11 +8,11 @@
 {-|
 
 Copyright:
-  This file is part of the package sthenauth. It is subject to the
+  This file is part of the package iolaus. It is subject to the
   license terms in the LICENSE file found in the top-level directory
   of this distribution and at:
 
-    git://code.devalot.com/sthenauth.git
+    https://code.devalot.com/open/iolaus
 
   No part of this package, including this file, may be copied,
   modified, propagated, or distributed except according to the terms
@@ -23,7 +23,7 @@ License: Apache-2.0
 Core password management types an functions.
 
 -}
-module Sthenauth.Crypto.Internal.Password
+module Iolaus.Crypto.Internal.Password
   ( Password
   , Clear
   , Hashed
@@ -65,11 +65,11 @@ import Opaleye
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Sthenauth.Crypto.Encoding (Encoding(..))
-import Sthenauth.Crypto.Salt (Salt(..), SharedSalt(..))
-import qualified Sthenauth.Crypto.Salt as Salt
-import Sthenauth.Crypto.Password.Settings (Settings(..))
-import qualified Sthenauth.Crypto.Password.Settings as Settings
+import Iolaus.Crypto.Encoding (Encoding(..))
+import Iolaus.Crypto.Salt (Salt(..), SharedSalt(..))
+import qualified Iolaus.Crypto.Salt as Salt
+import Iolaus.Crypto.Password.Settings (Settings(..))
+import qualified Iolaus.Crypto.Password.Settings as Settings
 
 --------------------------------------------------------------------------------
 -- | Information about what hashing algorithm was used and how it was

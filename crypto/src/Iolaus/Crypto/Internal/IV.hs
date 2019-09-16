@@ -3,11 +3,11 @@
 {-|
 
 Copyright:
-  This file is part of the package sthenauth. It is subject to the
+  This file is part of the package iolaus. It is subject to the
   license terms in the LICENSE file found in the top-level directory
   of this distribution and at:
 
-    git://code.devalot.com/sthenauth.git
+    https://code.devalot.com/open/iolaus
 
   No part of this package, including this file, may be copied,
   modified, propagated, or distributed except according to the terms
@@ -18,7 +18,7 @@ License: Apache-2.0
 Internal module for initialization vectors.
 
 -}
-module Sthenauth.Crypto.Internal.IV
+module Iolaus.Crypto.Internal.IV
   ( IV(..)
   , generate
   , pack
@@ -36,7 +36,7 @@ import qualified Data.ByteString.Char8 as ByteString
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Sthenauth.Crypto.Error (CryptoError, wrappedCryptoError)
+import Iolaus.Crypto.Error (CryptoError, wrappedCryptoError)
 
 --------------------------------------------------------------------------------
 -- | An initialization vector for cipher @c@.
