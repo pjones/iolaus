@@ -9,10 +9,18 @@ let
 
   nix-hs = import "${nix-hs-src}/default.nix" { inherit pkgs; };
 
+  zxcvbn-hs-src = {
+    url = "https://code.devalot.com/sthenauth/zxcvbn-hs.git";
+    rev = "788e794d3bf72a9393376d5a4c10fb942056eea6";
+  };
+
+  zxcvbn-hs = import "${fetchGit zxcvbn-hs-src}/default.nix" { inherit pkgs; };
+
 in nix-hs {
   cabal = ./iolaus-crypto.cabal;
 
   overrides = lib: self: super: with lib; {
+    inherit zxcvbn-hs;
     iolaus-opaleye = import ../opaleye { inherit pkgs; };
   };
 }

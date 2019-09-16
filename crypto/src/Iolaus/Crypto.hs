@@ -31,6 +31,8 @@ module Iolaus.Crypto
   , AsCryptoError(..)
   , CanCrypto(..)
 
+  , password
+  , strength
   , hash
   , verify
   , encrypt
@@ -39,6 +41,7 @@ module Iolaus.Crypto
 
   , Password
   , Clear
+  , Strong
   , Hashed
   , Secret
   , SaltedHash
@@ -55,7 +58,11 @@ import Control.Monad.Trans.Class (lift)
 import Crypto.Cipher.AES (AES256)
 import Crypto.Random (MonadRandom(getRandomBytes))
 import Data.Binary (Binary)
+import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
+import qualified Data.Time.Calendar as Time
+import qualified Text.Password.Strength as Zxcvbn
+import qualified Text.Password.Strength.Config as Zxcvbn
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -64,7 +71,7 @@ import qualified Iolaus.Crypto.Config as Config
 import Iolaus.Crypto.Error (CryptoError(..), AsCryptoError(..), liftCryptoError)
 import Iolaus.Crypto.Key (Key)
 import qualified Iolaus.Crypto.Key as Key
-import Iolaus.Crypto.Password (Password, Clear, Hashed, VerifyStatus)
+import Iolaus.Crypto.Password (Password, Clear, Strong, Hashed, VerifyStatus)
 import qualified Iolaus.Crypto.Password as Password
 import Iolaus.Crypto.Salt (SharedSalt(..))
 import qualified Iolaus.Crypto.Salt as Salt
@@ -140,10 +147,25 @@ initCrypto c =
          <*> pure Password.defaultSettings -- FIXME: calculate this!
 
 --------------------------------------------------------------------------------
+-- | See 'Password.password' in "Iolaus.Crypto.Password".
+password :: (Monad m) => Text -> m (Password Clear)
+password = pure . Password.password
+
+--------------------------------------------------------------------------------
+-- | See 'Password.strength' in "Iolaus.Crypto.Password".
+strength
+  :: (Monad m)
+  => Zxcvbn.Config
+  -> Time.Day
+  -> Password Clear
+  -> m (Either Zxcvbn.Score (Password Strong))
+strength c d = pure . Password.strength c d
+
+--------------------------------------------------------------------------------
 -- | See 'Password.hash' in "Iolaus.Crypto.Password".
 hash
   :: ( CanCrypto m )
-  => Password Clear
+  => Password Strong
   -> m (Password Hashed)
 hash pc = liftCrypto $ do
   Crypto{_salt, _pset} <- ask

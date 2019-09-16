@@ -26,8 +26,10 @@ Core password management types an functions.
 module Iolaus.Crypto.Internal.Password
   ( Password
   , Clear
+  , Strong
   , Hashed
   , password
+  , strength
   , hash
   , hash'
   , VerifyStatus(..)
@@ -51,8 +53,11 @@ import Data.String (IsString(..))
 import Data.Text (Text, strip)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Text.ICU.Normalize (NormalizationMode(NFKC), normalize)
+import Data.Time.Calendar (Day)
 import Database.PostgreSQL.Simple.FromField (FromField(..), fromJSONField)
 import GHC.Generics (Generic)
+import qualified Text.Password.Strength as Zxcvbn
+import qualified Text.Password.Strength.Config as Zxcvbn
 
 import Opaleye
   ( QueryRunnerColumnDefault(..)
@@ -80,7 +85,11 @@ data HashType = PBKDF2_HS3512 Settings Salt
 
 --------------------------------------------------------------------------------
 -- | Type representing insecure (plain) passwords.
-newtype Clear = Clear ()
+newtype Clear = Clear Text
+
+--------------------------------------------------------------------------------
+-- | Type representing a clear password that has been verified to not be weak.
+newtype Strong = Strong ()
 
 --------------------------------------------------------------------------------
 -- | Type representing secure (hashed) passwords.
@@ -111,7 +120,7 @@ instance IsString (Password Clear) where
 
 --------------------------------------------------------------------------------
 instance Eq (Password Clear) where
-  (==) (Password (Clear ()) x) (Password (Clear ()) y) = x == y
+  (==) (Password (Clear _) x) (Password (Clear _) y) = x == y
 
 -- | Allow hashed passwords to be compared for equality.
 instance Eq (Password Hashed) where
@@ -156,8 +165,32 @@ instance Default Constant (Password Hashed) (Column PGJson) where
 -- content of the password is not modified or truncated in any other
 -- way.
 password :: Text -> Password Clear
-password = Password clear . encodeUtf8 . normalize NFKC . strip
-  where clear = Clear ()
+password = (\t -> Password (Clear t) (encodeUtf8 t)) . unicode
+  where unicode = normalize NFKC . strip
+
+--------------------------------------------------------------------------------
+-- | Determine the strength of a password using the zxcvbn algorithm
+-- and possibly return a strong password.
+strength
+  :: Zxcvbn.Config
+     -- ^ Configuration for the zxcvbn algorithm.
+
+  -> Day
+     -- ^ A reference day for detecting dates in passwords.  This
+     -- should be the current day.
+
+  -> Password Clear
+     -- ^ The password to verify.
+
+  -> Either Zxcvbn.Score (Password Strong)
+     -- ^ If the password is weak, return its score.  Otherwise return
+     -- the password marked as being 'Strong'.
+
+strength cfg day (Password (Clear t) bs) =
+  let score = Zxcvbn.score cfg day t
+  in if Zxcvbn.strength score >= Zxcvbn.Moderate
+       then Right (Password (Strong ()) bs)
+       else Left score
 
 --------------------------------------------------------------------------------
 -- | Secure a password for storage using PBKDF2-HMAC-SHA3-512.
@@ -184,7 +217,7 @@ hash ::
   ( MonadRandom m
   ) => SharedSalt      -- ^ A salt shared across an entire application.
     -> Settings        -- ^ Hashing settings.
-    -> Password Clear  -- ^ The clear password to hash.
+    -> Password Strong -- ^ The clear password to hash.
     -> m (Password Hashed)
 hash ss settings clear = do
   salt <- Salt.generate
@@ -193,7 +226,7 @@ hash ss settings clear = do
 --------------------------------------------------------------------------------
 -- | A pure hashing function that requires you to provide the salt.
 --   See 'hash' for documentation.
-hash' :: SharedSalt -> Salt -> Settings -> Password Clear -> Password Hashed
+hash' :: SharedSalt -> Salt -> Settings -> Password Strong -> Password Hashed
 hash' (SharedSalt ss) salt settings (Password _ clear) =
   Password (Hashed ht) round2
 
@@ -252,7 +285,7 @@ verify ss settings clear hashed@(Password (Hashed ht) bs) =
     PBKDF2_HS3512 settings' salt ->
       let settingsOkay = settings' >= settings
           saltOkay     = ByteString.length (getSalt salt) >= Salt.recommended
-      in if hash' ss salt settings clear == hashed
+      in if hash' ss salt settings strong == hashed
          then bool NeedsUpgrade Match (settingsOkay && saltOkay)
          else Mismatch
 
@@ -261,3 +294,8 @@ verify ss settings clear hashed@(Password (Hashed ht) bs) =
       in if BCrypt.validatePassword c bs
             then NeedsUpgrade
             else Mismatch
+  where
+    strong :: Password Strong
+    strong =
+      let (Password _ c) = clear
+      in Password (Strong ()) c

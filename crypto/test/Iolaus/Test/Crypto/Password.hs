@@ -27,14 +27,17 @@ module Iolaus.Test.Crypto.Password
 import qualified Data.Aeson as Aeson
 import Data.ByteString.Char8 (ByteString)
 import Data.Text (Text)
+import qualified Data.Time.Calendar as Time
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Hedgehog
+import qualified Text.Password.Strength.Config as Zxcvbn
 
 --------------------------------------------------------------------------------
 -- Package Imports:
+import Iolaus.Crypto.Password (Password, Clear, Strong)
 import qualified Iolaus.Crypto.Password as Password
 import Iolaus.Crypto.Salt (Salt(..), SharedSalt(..))
 import qualified Iolaus.Crypto.Salt as Salt
@@ -56,7 +59,7 @@ salt = either (const $ fail "should not happen") pure . Salt.salt
 --------------------------------------------------------------------------------
 -- | Random password generator.
 genClearPassword :: Gen Text
-genClearPassword = Gen.text (Range.linear 0 255) Gen.unicode
+genClearPassword = Gen.text (Range.linear 6 255) Gen.unicode
 
 --------------------------------------------------------------------------------
 -- | Salt generator.
@@ -71,12 +74,13 @@ prop_hash_idempotent :: Property
 prop_hash_idempotent =
   property $ do
     password <- forAll genClearPassword
+    strong   <- mkStrong password
     saltP    <- forAll genSalt
     saltS    <- forAll (SharedSalt <$> genSalt)
 
     let settings = Password.defaultSettings
         clear  = Password.password password
-        hashed = Password.hash' saltS saltP settings clear
+        hashed = Password.hash' saltS saltP settings strong
         status = Password.verify saltS settings clear hashed
 
     status === Password.Match
@@ -87,13 +91,13 @@ prop_hash_mismatch :: Property
 prop_hash_mismatch =
   property $ do
     password <- forAll genClearPassword
+    strong <- mkStrong password
     saltP <- salt "abcdefghijk"
     saltS <- SharedSalt <$> salt "1234567890"
 
     let settings = Password.defaultSettings
-        clearA = Password.password password
-        clearB = Password.password (password <> "-extra")
-        hashed = Password.hash' saltS saltP settings clearA
+        clearB   = Password.password (password <> "-extra")
+        hashed = Password.hash' saltS saltP settings strong
         status = Password.verify saltS settings clearB hashed
 
     status === Password.Mismatch
@@ -104,11 +108,32 @@ prop_hash_serialize :: Property
 prop_hash_serialize =
   property $ do
     password <- forAll genClearPassword
+    strong <- mkStrong password
     saltP <- salt "abcdefghijk"
     saltS <- SharedSalt <$> salt "1234567890"
 
     let settings = Password.defaultSettings
-        clear = Password.password password
-        hashed = Password.hash' saltS saltP settings clear
+        hashed = Password.hash' saltS saltP settings strong
 
     tripping hashed Aeson.encode Aeson.decode
+
+--------------------------------------------------------------------------------
+-- | Converts a clear password to a strong password.  This can fail if
+-- the randomly generated password is consider weak.  I think that
+-- should be extremely rare so until it becomes a problem I'm keeping
+-- things the way they are.
+mkStrong :: (Monad m) => Text -> m (Password Strong)
+mkStrong t =
+  case Password.strength cfg day clear of
+    Left e  -> fail (show e <> " " <> show t)
+    Right p -> pure p
+
+  where
+    clear :: Password Clear
+    clear = Password.password t
+
+    day :: Time.Day
+    day = Time.fromGregorian 2019 1 1
+
+    cfg :: Zxcvbn.Config
+    cfg = mempty

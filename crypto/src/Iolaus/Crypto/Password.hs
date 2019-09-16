@@ -20,8 +20,10 @@ module Iolaus.Crypto.Password
   ( -- * Creating Passwords
     Password
   , Clear
+  , Strong
   , Hashed
   , password
+  , strength
   , hash
   , hash'
 
