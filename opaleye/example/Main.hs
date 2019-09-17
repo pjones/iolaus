@@ -79,6 +79,16 @@ instance DB.HasOpaleye AppEnv where
 
 --------------------------------------------------------------------------------
 -- | A custom transformer stack for your application:
+--
+-- Note: You don't need to make your custom monad an instance of
+-- @MonadIO@.  If fact, in most cases you probably don't want to do
+-- that.
+--
+-- If you don't make your monad an instance of @MonadIO@ then the
+-- instance for @MonadOpaleye@ needs to lift the @runQuery@ function
+-- into the inner monad (which is @MonadIO@) to work.
+--
+-- We'll use @MonadIO@ here to make this code simpler.
 newtype App a = App
   { unApp :: ExceptT AppError (ReaderT AppEnv IO) a }
   deriving ( Functor
@@ -88,6 +98,11 @@ newtype App a = App
            , MonadError AppError
            , MonadIO
            )
+
+-- Define how queries are lifted into your application:
+instance DB.MonadOpaleye App where
+  liftQuery = DB.runOpaleye
+  -- Or: App DB.runOpaleye if not using MonadIO
 
 --------------------------------------------------------------------------------
 -- | Database table type.  Standard Opaleye stuff.
@@ -106,7 +121,7 @@ people = table "people" (pPerson
 
 --------------------------------------------------------------------------------
 -- | Insert a new person into the database.
-createNewPerson :: (DB.CanOpaleye m) => Text -> Text -> m ()
+createNewPerson :: (DB.MonadOpaleye m) => Text -> Text -> m ()
 createNewPerson fn ln = do
 
   let p = Person (C.constant fn) (C.constant ln)
@@ -116,7 +131,7 @@ createNewPerson fn ln = do
 --------------------------------------------------------------------------------
 -- | Example running a database SELECT from within our app's
 -- transformer stack.
-fetchEveryone :: (DB.CanOpaleye m) => m [Person' Text]
+fetchEveryone :: (DB.MonadOpaleye m) => m [Person' Text]
 fetchEveryone = DB.liftQuery (DB.select $ selectTable people)
 
 --------------------------------------------------------------------------------
@@ -134,7 +149,7 @@ main = do
   -- Create a configuration and initialize Iolaus.  Normally we would
   -- read the configuration from a file.  Here we'll just grab the
   -- database connection string from the environment and use the
-  -- default confutation settings.
+  -- default configuration settings.
   --
   -- NOTE: If you are running this example directly from source you
   -- need to tell Cabal where the source directory is so it can find

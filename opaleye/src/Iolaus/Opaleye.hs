@@ -7,7 +7,6 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE UndecidableInstances       #-}
 
 {-|
 
@@ -70,11 +69,11 @@ module Iolaus.Opaleye
   --
   -- The 'PostgreSQL.SqlError' exception will be caught and turned
   -- into a 'MonadError' error.
-  , CanOpaleye(..)
-  , MonadOpaleye
+  , MonadOpaleye(..)
 
   -- * Reader Environment
   , initOpaleye
+  , runOpaleye
   , Opaleye
   , HasOpaleye(opaleye)
 
@@ -172,36 +171,33 @@ newtype Query a = Query
            )
 
 --------------------------------------------------------------------------------
--- | A constraint alias to make typing shorter.
---
--- If your application's monad implements these classes plus 'MonadIO'
--- it will automatically be an instance of 'CanOpaleye'.
-type MonadOpaleye e r m =
-  ( MonadError e m
-  , AsOpaleyeError e
-  , MonadReader r m
-  , HasOpaleye r
-  )
-
---------------------------------------------------------------------------------
 -- | Instances of this class can execute Opaleye queries.
-class (Monad m) => CanOpaleye m where
+class (Monad m) => MonadOpaleye m where
   -- | Execute a query outside of a transaction.  To run a query
   -- inside a transaction use the 'transaction' function instead.
   --
   -- 'PostgreSQL.SqlError' exceptions are caught and returned via 'MonadError'.
   liftQuery :: Query a -> m a
 
-instance CanOpaleye Query where
+instance MonadOpaleye Query where
   liftQuery = id
 
--- Default implementation:
-instance (Monad m, MonadIO m, MonadOpaleye e r m) => CanOpaleye m where
-  liftQuery q = do
-    env <- view opaleye
-    (result :: Either PostgreSQL.SqlError a) <-
-      unsafeRunPg (\c -> try $ runReaderT (unQ q) (env, c))
-    either (throwing _SqlError) pure result
+--------------------------------------------------------------------------------
+runOpaleye
+  :: ( Monad m
+     , MonadIO m
+     , MonadError e m
+     , AsOpaleyeError e
+     , MonadReader r m
+     , HasOpaleye r
+     )
+  => Query a
+  -> m a
+runOpaleye q = do
+  env <- view opaleye
+  (result :: Either PostgreSQL.SqlError a) <-
+    unsafeRunPg (\c -> try $ runReaderT (unQ q) (env, c))
+  either (throwing _SqlError) pure result
 
 --------------------------------------------------------------------------------
 -- | Make an 'Opaleye' value to stick into your 'MonadReader'.
@@ -256,7 +252,7 @@ unsafeRunPg f = view (opaleye.pool) >>= liftIO . flip Pool.withResource f
 -- | Run any necessary database migrations.
 migrate
   :: ( MonadError e m
-     , CanOpaleye m
+     , MonadOpaleye m
      , AsOpaleyeError e
      )
   => FilePath
@@ -334,7 +330,7 @@ delete d = wrap (`O.runDelete_` d)
 --
 -- For complete details, please read the documentation for 'transaction''.
 transaction
-  :: ( CanOpaleye m )
+  :: ( MonadOpaleye m )
   => Query a
   -> m a
 transaction = transaction' PostgreSQL.defaultTransactionMode
@@ -356,7 +352,7 @@ transaction = transaction' PostgreSQL.defaultTransactionMode
 --   * If all retries are exhausted 'throwError' will be used to
 --     return an error via the 'MonadError' constraint.
 transaction'
-  :: forall m a. ( CanOpaleye m )
+  :: forall m a. ( MonadOpaleye m )
   => TransactionMode
   -> Query a
   -> m a
