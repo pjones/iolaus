@@ -3,7 +3,6 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns             #-}
 {-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE UndecidableInstances       #-}
 
 {-|
 
@@ -26,10 +25,11 @@ Simplified crypto operations using MTL + classy optics.
 
 module Iolaus.Crypto
   ( Crypto
+  , runCrypto
   , initCrypto
   , HasCrypto(crypto)
   , AsCryptoError(..)
-  , CanCrypto(..)
+  , MonadCrypto(..)
 
   , password
   , strength
@@ -110,26 +110,37 @@ instance MonadRandom CryptoOp where
 
 --------------------------------------------------------------------------------
 -- | A class of types that can perform cryptography operations.
-class (Monad m) => CanCrypto m where
+class (Monad m) => MonadCrypto m where
   liftCrypto :: CryptoOp a -> m a
 
-instance CanCrypto CryptoOp where
+instance MonadCrypto CryptoOp where
   liftCrypto = id
 
-instance (Monad m, MonadIO m, MonadCrypto e r m) => CanCrypto m where
-  liftCrypto k = do
-    env <- view crypto
-    result <- liftIO $ flip runReaderT env $ runExceptT (unCrypto k)
-    liftCryptoError result
-
 --------------------------------------------------------------------------------
--- | A constraint alias to make for less typing.
-type MonadCrypto e r m =
-  ( MonadError e m
-  , AsCryptoError e
-  , MonadReader r m
-  , HasCrypto r
-  )
+-- | Run a crypto operation and return the result.
+--
+-- As long as your monad meets all of the listed constraints you can
+-- use this function to make an instance of 'MonadCrypto'.
+--
+-- @
+--   newtype MyMonad = ...
+--
+--   instance MonadCrypto MyMonad where
+--     liftCrypto = runCrypto
+-- @
+runCrypto
+  :: ( Monad m
+     , MonadIO m
+     , MonadError e m
+     , AsCryptoError e
+     , MonadReader r m
+     , HasCrypto r
+     )
+  => CryptoOp a -> m a
+runCrypto k = do
+  env <- view crypto
+  result <- liftIO $ flip runReaderT env $ runExceptT (unCrypto k)
+  liftCryptoError result
 
 --------------------------------------------------------------------------------
 -- | Create the 'Crypto' value necessary to perform cryptography
@@ -164,7 +175,7 @@ strength c d = pure . Password.strength c d
 --------------------------------------------------------------------------------
 -- | See 'Password.hash' in "Iolaus.Crypto.Password".
 hash
-  :: ( CanCrypto m )
+  :: ( MonadCrypto m )
   => Password Strong
   -> m (Password Hashed)
 hash pc = liftCrypto $ do
@@ -174,7 +185,7 @@ hash pc = liftCrypto $ do
 --------------------------------------------------------------------------------
 -- | See 'Password.verify' in "Iolaus.Crypto.Password".
 verify
-  :: ( CanCrypto m )
+  :: ( MonadCrypto m )
   => Password Clear
   -> Password Hashed
   -> m VerifyStatus
@@ -185,7 +196,7 @@ verify pc ph = liftCrypto $ do
 --------------------------------------------------------------------------------
 -- | See 'Symmetric.encrypt' in "Iolaus.Crypto.Symmetric".
 encrypt
-  :: ( CanCrypto m
+  :: ( MonadCrypto m
      , Binary a
      )
   => a
@@ -197,7 +208,7 @@ encrypt x = liftCrypto $ do
 --------------------------------------------------------------------------------
 -- | See 'Symmetric.decrypt' in "Iolaus.Crypto.Symmetric".
 decrypt
-  :: ( CanCrypto m
+  :: ( MonadCrypto m
      , Binary a
      )
   => Secret a
@@ -209,7 +220,7 @@ decrypt x = liftCrypto $ do
 --------------------------------------------------------------------------------
 -- | See 'SaltedHash.saltedHash' in "Iolaus.Crypto.SaltedHash".
 saltedHash
-  :: ( CanCrypto m
+  :: ( MonadCrypto m
      , ForSaltedHash a
      )
   => a
