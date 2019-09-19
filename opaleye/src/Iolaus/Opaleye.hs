@@ -86,6 +86,7 @@ module Iolaus.Opaleye
   , AsOpaleyeError(..)
 
   -- * Schema Migrations
+  , initialized
   , migrate
 
   -- * Raw Connection Access
@@ -249,6 +250,17 @@ unsafeRunPg
 unsafeRunPg f = view (opaleye.pool) >>= liftIO . flip Pool.withResource f
 
 --------------------------------------------------------------------------------
+-- | 'True' if the database has been initialized (i.e. at least one
+-- migration has run).
+initialized
+  :: ( MonadOpaleye m )
+  => m Bool
+initialized = liftQuery $ Query (ask >>= lift . go . snd)
+  where
+    go :: PostgreSQL.Connection -> IO Bool
+    go conn = existsTable conn "schema_migrations"
+
+--------------------------------------------------------------------------------
 -- | Run any necessary database migrations.
 migrate
   :: ( MonadError e m
@@ -275,9 +287,9 @@ migrate dir verbose = do
   where
     go :: PostgreSQL.Connection -> IO (Migrate.MigrationResult String)
     go conn = do
-      initialized <- existsTable conn "schema_migrations"
+      exists <- existsTable conn "schema_migrations"
 
-      let mi  = if initialized then [] else [Migrate.MigrationInitialization]
+      let mi  = [Migrate.MigrationInitialization | not exists]
           ms  = mi ++ [Migrate.MigrationDirectory dir]
 
       PostgreSQL.withTransaction conn $
