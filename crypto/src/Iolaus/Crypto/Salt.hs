@@ -31,20 +31,24 @@ module Iolaus.Crypto.Salt
   , recommended
   , generate
   , generate'
+  , encode
+  , pack
   ) where
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import Iolaus.Opaleye.Newtype (makeNewtypeInstances)
 import Crypto.Random (MonadRandom(..))
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
+import Data.Text (Text)
+import Iolaus.Opaleye.Newtype (makeNewtypeInstances)
 import Opaleye.SqlTypes (SqlBytea)
 
 --------------------------------------------------------------------------------
 -- Project Imports:
 import Iolaus.Crypto.Encoding (Encoding(..))
+import qualified Iolaus.Crypto.Encoding as Encoding
 import Iolaus.Crypto.Error (CryptoError(..))
 
 --------------------------------------------------------------------------------
@@ -72,15 +76,15 @@ newtype SharedSalt = SharedSalt Salt
   deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
--- | Convert a 'ByteString' into 'Salt'.
-salt :: ByteString -> Either CryptoError Salt
-salt bs = if ByteString.length bs >= recommended
-             then Right (Salt bs)
-             else Left InvalidSaltLength
+-- | Convert from a text-encoded 'Salt'.  This expects the text to
+-- have come from the 'encode' function.
+salt :: Text -> Either CryptoError Salt
+salt = pack . getBytes . Encoding.decode
 
 --------------------------------------------------------------------------------
--- | Convert a 'ByteString' into 'SharedSalt'.
-sharedSalt :: ByteString -> Either CryptoError SharedSalt
+-- | Convert from a text-encoded 'Salt'.  This expects the text to
+-- have come from the 'encode' function.
+sharedSalt :: Text -> Either CryptoError SharedSalt
 sharedSalt = fmap SharedSalt . salt
 
 --------------------------------------------------------------------------------
@@ -101,3 +105,17 @@ generate = generate' recommended
 -- automatically upgrade the length to the recommended value.
 generate' :: (MonadRandom m) => Int -> m Salt
 generate' = fmap Salt . getRandomBytes . max recommended
+
+--------------------------------------------------------------------------------
+-- | Encode salt for writing to a safe location.
+encode :: Salt -> Text
+encode = Encoding.encode . Encoding . getSalt
+
+--------------------------------------------------------------------------------
+-- | Use an existing 'ByteString' as 'Salt'.  The 'ByteString' must
+-- contain as least as many bytes as recommended.
+pack :: ByteString -> Either CryptoError Salt
+pack bs =
+  if ByteString.length bs >= recommended
+  then Right (Salt bs)
+  else Left InvalidSaltLength

@@ -59,7 +59,6 @@ import Crypto.Cipher.AES (AES256)
 import Crypto.Random (MonadRandom(getRandomBytes))
 import Data.Binary (Binary)
 import Data.Text (Text)
-import Data.Text.Encoding (encodeUtf8)
 import qualified Data.Time.Calendar as Time
 import qualified Text.Password.Strength as Zxcvbn
 import qualified Text.Password.Strength.Config as Zxcvbn
@@ -129,8 +128,7 @@ instance MonadCrypto CryptoOp where
 --     liftCrypto = runCrypto
 -- @
 runCrypto
-  :: ( Monad m
-     , MonadIO m
+  :: ( MonadIO m
      , MonadError e m
      , AsCryptoError e
      , MonadReader r m
@@ -154,7 +152,7 @@ initCrypto
   -> m Crypto
 initCrypto c =
   Crypto <$> liftCryptoError (Key.convert $ Config.key c)
-         <*> liftCryptoError (Salt.sharedSalt (encodeUtf8 $ Config.salt c))
+         <*> liftCryptoError (Salt.sharedSalt (Config.salt c))
          <*> pure Password.defaultSettings -- FIXME: calculate this!
 
 --------------------------------------------------------------------------------
