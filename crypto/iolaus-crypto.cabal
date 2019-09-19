@@ -59,6 +59,7 @@ library
 
   exposed-modules:
     Iolaus.Crypto
+      Iolaus.Crypto.Cipher
       Iolaus.Crypto.Config
       Iolaus.Crypto.Error
       Iolaus.Crypto.IV

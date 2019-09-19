@@ -22,6 +22,7 @@ module Iolaus.Crypto.Key
   , pack
   , convert
   , generate
+  , generate'
   , encode
   ) where
 

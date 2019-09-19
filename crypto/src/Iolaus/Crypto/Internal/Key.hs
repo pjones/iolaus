@@ -25,6 +25,7 @@ module Iolaus.Crypto.Internal.Key
   , pack
   , convert
   , generate
+  , generate'
   , encode
   ) where
 
@@ -44,6 +45,7 @@ import qualified Dhall
 import Iolaus.Crypto.Encoding (Encoding(..))
 import qualified Iolaus.Crypto.Encoding as Encoding
 import Iolaus.Crypto.Error (CryptoError(..))
+import qualified Iolaus.Crypto.Cipher as Cipher
 
 --------------------------------------------------------------------------------
 -- | Type alias to remind you that a key can't be used for encryption.
@@ -94,9 +96,14 @@ convert (Key bs) =
      else Left InvalidKeyLength
 
 --------------------------------------------------------------------------------
+-- | Generate a key that is appropriate for the default cipher.
+generate :: (MonadRandom m) => m (Key Cipher.DefaultCipher)
+generate = generate'
+
+--------------------------------------------------------------------------------
 -- | Generate a key that is appropriate for the given cipher.
-generate :: forall m c. (MonadRandom m, Cipher c) => m (Key c)
-generate = Key <$> getRandomBytes (keySize (undefined :: c))
+generate' :: forall m c. (MonadRandom m, Cipher c) => m (Key c)
+generate' = Key <$> getRandomBytes (keySize (undefined :: c))
 
 --------------------------------------------------------------------------------
 -- | Encode a key for writing to a safe location.
