@@ -72,10 +72,10 @@ import Database.PostgreSQL.Simple.FromField
 -- >
 -- > liftJSON ''Person
 --
--- Your type will be serialized to/from JSON and stored in a JSON column.
+-- Your type will be serialized to/from JSON and stored in a @SqlJsonb@ column.
 
 --------------------------------------------------------------------------------
--- | A type wrapper to lift another type into PostgreSQL via @PGJson@.
+-- | A type wrapper to lift another type into PostgreSQL via @SqlJsonb@.
 --
 -- You shouldn't need to use this type wrapper but it's exported just
 -- in case.
@@ -91,24 +91,24 @@ instance (FromJSON a, Typeable a) => FromField (LiftJSON a) where
                Aeson.Error e   -> returnError ConversionFailed f e
 
 --------------------------------------------------------------------------------
-instance (FromJSON a, Typeable a) => QueryRunnerColumnDefault PGJson (LiftJSON a) where
+instance (FromJSON a, Typeable a) => QueryRunnerColumnDefault SqlJsonb (LiftJSON a) where
   queryRunnerColumnDefault = fieldQueryRunnerColumn
 
 --------------------------------------------------------------------------------
-instance (ToJSON a) => Default Constant (LiftJSON a) (Column PGJson) where
-  def = Constant (pgValueJSON . Aeson.toJSON . unliftJSON)
+instance (ToJSON a) => Default Constant (LiftJSON a) (Column SqlJsonb) where
+  def = Constant (sqlValueJSONB . Aeson.toJSON . unliftJSON)
 
 --------------------------------------------------------------------------------
--- | Use Template Haskell to generate database instances for @PGJson@.
+-- | Use Template Haskell to generate database instances for @SqlJsonb@.
 liftJSON :: TH.Name -> TH.Q [TH.Dec]
 liftJSON name =
   [d|
     instance FromField $(TH.conT name) where
       fromField f b = unliftJSON <$> fromField f b
 
-    instance QueryRunnerColumnDefault PGJson $(TH.conT name) where
+    instance QueryRunnerColumnDefault SqlJsonb $(TH.conT name) where
       queryRunnerColumnDefault = unliftJSON <$> queryRunnerColumnDefault
 
-    instance Default Constant $(TH.conT name) (Column PGJson) where
-      def = Constant (pgValueJSON . Aeson.toJSON)
+    instance Default Constant $(TH.conT name) (Column SqlJsonb) where
+      def = Constant (sqlValueJSONB . Aeson.toJSON)
   |]

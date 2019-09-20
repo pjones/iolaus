@@ -63,9 +63,9 @@ import Opaleye
   ( QueryRunnerColumnDefault(..)
   , Constant(..)
   , Column
-  , PGJson
+  , SqlJsonb
   , fieldQueryRunnerColumn
-  , pgValueJSON
+  , sqlValueJSONB
   )
 
 --------------------------------------------------------------------------------
@@ -144,11 +144,11 @@ instance FromJSON (Password Hashed) where
 instance FromField (Password Hashed) where
   fromField = fromJSONField
 
-instance QueryRunnerColumnDefault PGJson (Password Hashed) where
+instance QueryRunnerColumnDefault SqlJsonb (Password Hashed) where
   queryRunnerColumnDefault = fieldQueryRunnerColumn
 
-instance Default Constant (Password Hashed) (Column PGJson) where
-  def = Constant (pgValueJSON . Aeson.toJSON)
+instance Default Constant (Password Hashed) (Column SqlJsonb) where
+  def = Constant (sqlValueJSONB . Aeson.toJSON)
 
 --------------------------------------------------------------------------------
 -- | Construct an insecure password.  This type of password has no
