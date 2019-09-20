@@ -34,6 +34,8 @@ module Iolaus.Crypto.SaltedHash
 --------------------------------------------------------------------------------
 -- Library Imports:
 import qualified Crypto.Hash as Hash
+import Data.Aeson (ToJSON(..), FromJSON(..))
+import qualified Data.Aeson as Aeson
 import qualified Data.ByteArray as ByteArray
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as ByteString
@@ -62,6 +64,13 @@ import Iolaus.Crypto.Salt (Salt(..), SharedSalt(..))
 -- | A type that represents a salted and hashed value.
 newtype SaltedHash a = SaltedHash { getHash :: Text }
   deriving (Eq, Show)
+
+--------------------------------------------------------------------------------
+instance ToJSON (SaltedHash a) where
+  toJSON = toJSON . getHash
+
+instance FromJSON (SaltedHash a) where
+  parseJSON = fmap SaltedHash . Aeson.parseJSON
 
 --------------------------------------------------------------------------------
 instance FromField (SaltedHash a) where

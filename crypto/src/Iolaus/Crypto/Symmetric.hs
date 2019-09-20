@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 
 {-|
 
@@ -28,47 +29,57 @@ module Iolaus.Crypto.Symmetric
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import Crypto.Cipher.AES (AES256)
 import qualified Crypto.Cipher.Types as Cryptonite
 import Crypto.Error (eitherCryptoError)
 import Crypto.Random (MonadRandom(..))
+import Data.Aeson (ToJSON(..), FromJSON(..))
+import qualified Data.Aeson as Aeson
 import Data.Bifunctor (first)
 import Data.Binary (Binary)
 import qualified Data.Binary as Binary
-import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
 import qualified Data.ByteString.Lazy as LBS
 import Data.Profunctor.Product.Default (Default(def))
+import Data.Text (Text)
 import Database.PostgreSQL.Simple.FromField (FromField(..))
 
 import Opaleye
   ( Constant(..)
   , Column
   , QueryRunnerColumnDefault(..)
-  , SqlBytea
+  , SqlText
   , fieldQueryRunnerColumn
   , toFields
   )
 
 --------------------------------------------------------------------------------
 -- Project Imports:
+import Iolaus.Crypto.Encoding (Encoding(..))
+import qualified Iolaus.Crypto.Encoding as Encoding
 import Iolaus.Crypto.Error (CryptoError, wrappedCryptoError)
 import Iolaus.Crypto.Internal.IV (IV(..))
 import qualified Iolaus.Crypto.Internal.IV as IV
 import Iolaus.Crypto.Internal.Key (Key(..))
 
 --------------------------------------------------------------------------------
-newtype Secret a = Secret { getSecret :: ByteString }
+newtype Secret a = Secret { getSecret :: Text }
   deriving (Eq, Show)
+
+--------------------------------------------------------------------------------
+instance ToJSON (Secret a) where
+  toJSON = toJSON . getSecret
+
+instance FromJSON (Secret a) where
+  parseJSON = fmap Secret . Aeson.parseJSON
 
 --------------------------------------------------------------------------------
 instance FromField (Secret a) where
   fromField f b = Secret <$> fromField f b
 
-instance QueryRunnerColumnDefault SqlBytea (Secret a) where
+instance QueryRunnerColumnDefault SqlText (Secret a) where
   queryRunnerColumnDefault = fieldQueryRunnerColumn
 
-instance Default Constant (Secret a) (Column SqlBytea) where
+instance Default Constant (Secret a) (Column SqlText) where
   def = Constant (toFields . getSecret)
 
 --------------------------------------------------------------------------------
@@ -77,10 +88,12 @@ instance Default Constant (Secret a) (Column SqlBytea) where
 -- This version generates a unique initialization vector which is
 -- stored with the encrypted secret.
 encrypt
-  :: ( MonadRandom m
-     , Binary a
+  :: forall a c m.
+    ( MonadRandom m
+    , Binary a
+    , Cryptonite.BlockCipher c
      )
-  => Key AES256
+  => Key c
   -- ^ The encryption key.
 
   -> a
@@ -93,12 +106,14 @@ encrypt k s = encrypt' <$> IV.generate <*> pure k <*> pure s
 --------------------------------------------------------------------------------
 -- | Encrypt a secret given a pre-generated IV.
 encrypt'
-  :: ( Binary a
+  :: forall a c.
+     ( Binary a
+     , Cryptonite.BlockCipher c
      )
-  => IV AES256
+  => IV c
   -- ^ The initialization vector to use.  Should be unique.
 
-  -> Key AES256
+  -> Key c
   -- ^ The encryption key.
 
   -> a
@@ -111,14 +126,17 @@ encrypt' iv (Key key) x = do
   context <- first wrappedCryptoError $ eitherCryptoError $ Cryptonite.cipherInit key
 
   let bs = Cryptonite.ctrCombine context cIV (LBS.toStrict $ Binary.encode x)
-  pure $ Secret (getIV iv <> bs) -- Store IV in the secret.
+      ts = Encoding.encode $ Encoding (getIV iv <> bs) -- Store IV in the secret.
+  pure $ Secret ts
 
 --------------------------------------------------------------------------------
 -- | Decrypt text that was previously encrypted.
 decrypt
-  :: ( Binary a
+  :: forall a c.
+     ( Binary a
+     , Cryptonite.BlockCipher c
      )
-  => Key AES256
+  => Key c
   -- ^ The encryption key used to encrypt the text.
 
   -> Secret a
@@ -126,9 +144,10 @@ decrypt
 
   -> Either CryptoError a
   -- ^ If successful, the decrypted text.
-decrypt (Key key) (Secret bs) = do
-  let size = Cryptonite.blockSize (undefined :: AES256)
-      iv = IV (ByteString.take size bs) :: IV AES256
+decrypt (Key key) (Secret ts) = do
+  let bs = getBytes (Encoding.decode ts)
+      size = Cryptonite.blockSize (undefined :: c)
+      iv = IV (ByteString.take size bs) :: IV c
       secret = ByteString.drop size bs
 
   cIV <- IV.toCryptonite iv
