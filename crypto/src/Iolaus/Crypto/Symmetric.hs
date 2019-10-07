@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 
 {-|
@@ -29,11 +30,13 @@ module Iolaus.Crypto.Symmetric
 
 --------------------------------------------------------------------------------
 -- Library Imports:
+import Control.Monad (when)
 import qualified Crypto.Cipher.Types as Cryptonite
 import Crypto.Error (eitherCryptoError)
 import Crypto.Random (MonadRandom(..))
-import Data.Aeson (ToJSON(..), FromJSON(..))
+import Data.Aeson (ToJSON(..), FromJSON(..), (.:), (.=))
 import qualified Data.Aeson as Aeson
+import qualified Data.Aeson.Types as Aeson
 import Data.Bifunctor (first)
 import Data.Binary (Binary)
 import qualified Data.Binary as Binary
@@ -41,15 +44,19 @@ import qualified Data.ByteString.Char8 as ByteString
 import qualified Data.ByteString.Lazy as LBS
 import Data.Profunctor.Product.Default (Default(def))
 import Data.Text (Text)
-import Database.PostgreSQL.Simple.FromField (FromField(..))
+
+import Database.PostgreSQL.Simple.FromField
+  ( FromField(..)
+  , Conversion
+  )
 
 import Opaleye
   ( Constant(..)
   , Column
   , QueryRunnerColumnDefault(..)
-  , SqlText
+  , SqlJsonb
   , fieldQueryRunnerColumn
-  , toFields
+  , sqlValueJSONB
   )
 
 --------------------------------------------------------------------------------
@@ -62,25 +69,41 @@ import qualified Iolaus.Crypto.Internal.IV as IV
 import Iolaus.Crypto.Internal.Key (Key(..))
 
 --------------------------------------------------------------------------------
-newtype Secret a = Secret { getSecret :: Text }
+newtype Secret c a = Secret { getSecret :: Text }
   deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
-instance ToJSON (Secret a) where
-  toJSON = toJSON . getSecret
+instance (Cryptonite.Cipher c) => ToJSON (Secret c a) where
+  toJSON s =
+    Aeson.object [ "data"   .= getSecret s
+                 , "cipher" .= Cryptonite.cipherName (undefined :: c)
+                 ]
 
-instance FromJSON (Secret a) where
-  parseJSON = fmap Secret . Aeson.parseJSON
+instance (Cryptonite.Cipher c) => FromJSON (Secret c a) where
+  parseJSON (Aeson.Object v) = do
+    let c' = Cryptonite.cipherName (undefined :: c)
+    c <- v .: "cipher"
+
+    when (c /= c') $
+      fail ("cipher mismatch, expected " <> c' <> " but JSON contains " <> c)
+
+    Secret <$> v .: "data"
+  parseJSON invalid = Aeson.typeMismatch "Secret" invalid
 
 --------------------------------------------------------------------------------
-instance FromField (Secret a) where
-  fromField f b = Secret <$> fromField f b
+instance (Cryptonite.Cipher c) => FromField (Secret c a) where
+  fromField f b = go =<< fromField f b
+    where
+      go :: Aeson.Value -> Conversion (Secret c a)
+      go v = case Aeson.fromJSON v of
+               Aeson.Success x -> pure x
+               Aeson.Error e   -> fail e
 
-instance QueryRunnerColumnDefault SqlText (Secret a) where
+instance (Cryptonite.Cipher c) => QueryRunnerColumnDefault SqlJsonb (Secret c a) where
   queryRunnerColumnDefault = fieldQueryRunnerColumn
 
-instance Default Constant (Secret a) (Column SqlText) where
-  def = Constant (toFields . getSecret)
+instance (Cryptonite.Cipher c) => Default Constant (Secret c a) (Column SqlJsonb) where
+  def = Constant sqlValueJSONB
 
 --------------------------------------------------------------------------------
 -- | Encrypt a secret.
@@ -99,7 +122,7 @@ encrypt
   -> a
   -- ^ The text to encrypt.
 
-  -> m (Either CryptoError (Secret a))
+  -> m (Either CryptoError (Secret c a))
   -- ^ If successful, the encrypted secret.
 encrypt k s = encrypt' <$> IV.generate <*> pure k <*> pure s
 
@@ -119,7 +142,7 @@ encrypt'
   -> a
   -- ^ The text to encrypt.
 
-  -> Either CryptoError (Secret a)
+  -> Either CryptoError (Secret c a)
   -- ^ If successful, the encrypted secret.
 encrypt' iv (Key key) x = do
   cIV     <- IV.toCryptonite iv
@@ -139,7 +162,7 @@ decrypt
   => Key c
   -- ^ The encryption key used to encrypt the text.
 
-  -> Secret a
+  -> Secret c a
   -- ^ The previously encrypted secret.
 
   -> Either CryptoError a

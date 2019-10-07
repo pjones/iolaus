@@ -29,7 +29,6 @@ module Iolaus.Crypto.Password.Settings
 -- Library Imports:
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
 import Data.Aeson (FromJSON, ToJSON)
-import Dhall (Interpret)
 import GHC.Generics
 import Numeric.Natural (Natural)
 
@@ -38,7 +37,7 @@ import Numeric.Natural (Natural)
 data Settings = Settings
   { iterations :: Natural -- ^ Number of iterations for the algorithm.
   , bytes      :: Natural -- ^ Size of the output in bytes.
-  } deriving (Generic, Eq, Ord, Show, Interpret, FromJSON, ToJSON)
+  } deriving (Generic, Eq, Ord, Show, FromJSON, ToJSON)
 
 --------------------------------------------------------------------------------
 -- | Default settings.

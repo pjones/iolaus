@@ -38,7 +38,6 @@ import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
 import Data.String (IsString(..))
 import Data.Text (Text)
-import qualified Dhall
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -57,10 +56,6 @@ newtype Key a = Key { getKey :: ByteString }
 
 instance IsString (Key Unchecked) where
   fromString = Key . fromString
-
---------------------------------------------------------------------------------
-instance Dhall.Interpret (Key Unchecked) where
-  autoWith _ = Key . Encoding.getBytes . Encoding.decode <$> Dhall.strictText
 
 --------------------------------------------------------------------------------
 instance FromJSON (Key Unchecked) where

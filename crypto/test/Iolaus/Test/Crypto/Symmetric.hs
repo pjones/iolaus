@@ -21,6 +21,7 @@ module Iolaus.Test.Crypto.Symmetric (run) where
 --------------------------------------------------------------------------------
 -- Library Imports:
 import Crypto.Cipher.AES (AES256)
+import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
@@ -80,3 +81,8 @@ prop_reversible =
       Right s -> pure s
 
     dec === txt
+
+    -- Also test JSON encoding/decoding.
+    case Aeson.eitherDecode (Aeson.encode enc) of
+      Left e     -> fail (show e)
+      Right enc' -> enc === enc'

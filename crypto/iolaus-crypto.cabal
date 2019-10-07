@@ -37,7 +37,6 @@ common dependencies
                , binary                      >= 0.8   && < 1.0
                , bytestring                  >= 0.10  && < 0.11
                , cryptonite                  >= 0.25  && < 1.0
-               , dhall                       >= 1.19  && < 2.0
                , iolaus-opaleye              >= 0.1   && < 0.2
                , lens                        >= 4.0   && < 5.0
                , memory                      >= 0.14  && < 1.0
@@ -60,7 +59,6 @@ library
   exposed-modules:
     Iolaus.Crypto
       Iolaus.Crypto.Cipher
-      Iolaus.Crypto.Config
       Iolaus.Crypto.Error
       Iolaus.Crypto.IV
       Iolaus.Crypto.Key

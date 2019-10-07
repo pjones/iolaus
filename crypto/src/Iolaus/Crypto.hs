@@ -55,7 +55,7 @@ import Control.Monad.Except (ExceptT, MonadError, runExceptT, liftEither)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (ReaderT, MonadReader, runReaderT, ask)
 import Control.Monad.Trans.Class (lift)
-import Crypto.Cipher.AES (AES256)
+import Crypto.Cipher.Types (BlockCipher)
 import Crypto.Random (MonadRandom(getRandomBytes))
 import Data.Binary (Binary)
 import Data.Text (Text)
@@ -65,15 +65,11 @@ import qualified Text.Password.Strength.Config as Zxcvbn
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Iolaus.Crypto.Config (Config)
-import qualified Iolaus.Crypto.Config as Config
 import Iolaus.Crypto.Error (CryptoError(..), AsCryptoError(..), liftCryptoError)
 import Iolaus.Crypto.Key (Key)
-import qualified Iolaus.Crypto.Key as Key
 import Iolaus.Crypto.Password (Password, Clear, Strong, Hashed, VerifyStatus)
 import qualified Iolaus.Crypto.Password as Password
 import Iolaus.Crypto.Salt (SharedSalt(..))
-import qualified Iolaus.Crypto.Salt as Salt
 import Iolaus.Crypto.SaltedHash (ForSaltedHash, SaltedHash)
 import qualified Iolaus.Crypto.SaltedHash as SaltedHash
 import Iolaus.Crypto.Symmetric (Secret)
@@ -82,13 +78,7 @@ import qualified Iolaus.Crypto.Symmetric as Symmetric
 --------------------------------------------------------------------------------
 -- | Environment needed for encryption.
 data Crypto = Crypto
-  { _key :: Key AES256
-    -- ^ Encryption key to protect fields in the database.
-
-  , _salt :: SharedSalt
-    -- ^ Shared salt for hashing passwords and other values.
-
-  , _pset :: Password.Settings
+  { _pset :: Password.Settings
     -- ^ Password settings.
   }
 
@@ -145,15 +135,11 @@ runCrypto k = do
 -- operations.  Place this value in your @Reader@ environment and make
 -- it an instance of 'HasCrypto'.
 initCrypto
-  :: ( MonadError e m
-     , AsCryptoError e
+  :: ( Monad m
      )
-  => Config
-  -> m Crypto
-initCrypto c =
-  Crypto <$> liftCryptoError (Key.convert $ Config.key c)
-         <*> liftCryptoError (Salt.sharedSalt (Config.salt c))
-         <*> pure Password.defaultSettings -- FIXME: calculate this!
+  => m Crypto
+initCrypto =
+  Crypto <$> pure Password.defaultSettings -- FIXME: calculate this!
 
 --------------------------------------------------------------------------------
 -- | See 'Password.password' in "Iolaus.Crypto.Password".
@@ -174,46 +160,48 @@ strength c d = pure . Password.strength c d
 -- | See 'Password.hash' in "Iolaus.Crypto.Password".
 hash
   :: ( MonadCrypto m )
-  => Password Strong
+  => SharedSalt
+  -> Password Strong
   -> m (Password Hashed)
-hash pc = liftCrypto $ do
-  Crypto{_salt, _pset} <- ask
-  Password.hash _salt _pset pc
+hash salt pc = liftCrypto $ do
+  Crypto{_pset} <- ask
+  Password.hash salt _pset pc
 
 --------------------------------------------------------------------------------
 -- | See 'Password.verify' in "Iolaus.Crypto.Password".
 verify
   :: ( MonadCrypto m )
-  => Password Clear
+  => SharedSalt
+  -> Password Clear
   -> Password Hashed
   -> m VerifyStatus
-verify pc ph = liftCrypto $ do
-  Crypto{_salt, _pset} <- ask
-  pure $ Password.verify _salt _pset pc ph
+verify salt pc ph = liftCrypto $ do
+  Crypto{_pset} <- ask
+  pure $ Password.verify salt _pset pc ph
 
 --------------------------------------------------------------------------------
 -- | See 'Symmetric.encrypt' in "Iolaus.Crypto.Symmetric".
 encrypt
   :: ( MonadCrypto m
      , Binary a
+     , BlockCipher c
      )
-  => a
-  -> m (Secret a)
-encrypt x = liftCrypto $ do
-  Crypto{_key} <- ask
-  Symmetric.encrypt _key x >>= CryptoOp . liftEither
+  => Key c
+  -> a
+  -> m (Secret c a)
+encrypt key x = liftCrypto $ (Symmetric.encrypt key x >>= CryptoOp . liftEither)
 
 --------------------------------------------------------------------------------
 -- | See 'Symmetric.decrypt' in "Iolaus.Crypto.Symmetric".
 decrypt
   :: ( MonadCrypto m
      , Binary a
+     , BlockCipher c
      )
-  => Secret a
+  => Key c
+  -> Secret c a
   -> m a
-decrypt x = liftCrypto $ do
-  Crypto{_key} <- ask
-  CryptoOp $ liftEither (Symmetric.decrypt _key x)
+decrypt key x = liftCrypto $ CryptoOp $ liftEither (Symmetric.decrypt key x)
 
 --------------------------------------------------------------------------------
 -- | See 'SaltedHash.saltedHash' in "Iolaus.Crypto.SaltedHash".
@@ -221,8 +209,7 @@ saltedHash
   :: ( MonadCrypto m
      , ForSaltedHash a
      )
-  => a
+  => SharedSalt
+  -> a
   -> m (SaltedHash a)
-saltedHash x = liftCrypto $ do
-  Crypto{_salt} <- ask
-  pure $ SaltedHash.saltedHash _salt x
+saltedHash salt x = liftCrypto $ pure $ SaltedHash.saltedHash salt x
