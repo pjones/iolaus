@@ -72,7 +72,7 @@ instance FromJSON Salt where
 
 --------------------------------------------------------------------------------
 -- | A password salt that is shared by all secrets in the system.
-newtype SharedSalt = SharedSalt Salt
+newtype SharedSalt = SharedSalt { getSharedSalt :: Salt }
   deriving (Eq, Show)
 
 --------------------------------------------------------------------------------

@@ -46,6 +46,10 @@ module Iolaus.Crypto
   , Secret
   , SaltedHash
 
+  , Key
+  , Salt
+  , SharedSalt(..)
+
   , Cipher
   , BlockCipher
   , DefaultCipher
@@ -73,7 +77,7 @@ import Iolaus.Crypto.Error (CryptoError(..), AsCryptoError(..), liftCryptoError)
 import Iolaus.Crypto.Key (Key)
 import Iolaus.Crypto.Password (Password, Clear, Strong, Hashed, VerifyStatus)
 import qualified Iolaus.Crypto.Password as Password
-import Iolaus.Crypto.Salt (SharedSalt(..))
+import Iolaus.Crypto.Salt (Salt, SharedSalt(..))
 import Iolaus.Crypto.SaltedHash (ForSaltedHash, SaltedHash)
 import qualified Iolaus.Crypto.SaltedHash as SaltedHash
 import Iolaus.Crypto.Symmetric (Secret)
