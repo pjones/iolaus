@@ -21,13 +21,15 @@ Types for selecting ciphers at compile time.
 -}
 module Iolaus.Crypto.Cipher
   ( Ciphers(..)
-  , Cipher
+  , Cryptonite.Cipher
+  , Cryptonite.BlockCipher
   , DefaultCipher
   ) where
 
 --------------------------------------------------------------------------------
 -- Library Imports:
 import qualified Crypto.Cipher.AES as Cryptonite
+import qualified Crypto.Cipher.Types as Cryptonite
 
 --------------------------------------------------------------------------------
 -- | Supported ciphers.
@@ -37,9 +39,9 @@ data Ciphers
 --------------------------------------------------------------------------------
 -- | Type function to translate the 'Ciphers' type to a matching type
 -- in the Cryptonite library.
-type family Cipher a :: * where
-  Cipher 'AES256 = Cryptonite.AES256
+type family CipherF a :: * where
+  CipherF 'AES256 = Cryptonite.AES256
 
 --------------------------------------------------------------------------------
 -- | The default cipher used by this library.
-type DefaultCipher = Cipher 'AES256
+type DefaultCipher = CipherF 'AES256

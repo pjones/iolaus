@@ -45,6 +45,10 @@ module Iolaus.Crypto
   , Hashed
   , Secret
   , SaltedHash
+
+  , Cipher
+  , BlockCipher
+  , DefaultCipher
   ) where
 
 --------------------------------------------------------------------------------
@@ -55,7 +59,6 @@ import Control.Monad.Except (ExceptT, MonadError, runExceptT, liftEither)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (ReaderT, MonadReader, runReaderT, ask)
 import Control.Monad.Trans.Class (lift)
-import Crypto.Cipher.Types (BlockCipher)
 import Crypto.Random (MonadRandom(getRandomBytes))
 import Data.Binary (Binary)
 import Data.Text (Text)
@@ -65,6 +68,7 @@ import qualified Text.Password.Strength.Config as Zxcvbn
 
 --------------------------------------------------------------------------------
 -- Project Imports:
+import Iolaus.Crypto.Cipher
 import Iolaus.Crypto.Error (CryptoError(..), AsCryptoError(..), liftCryptoError)
 import Iolaus.Crypto.Key (Key)
 import Iolaus.Crypto.Password (Password, Clear, Strong, Hashed, VerifyStatus)
