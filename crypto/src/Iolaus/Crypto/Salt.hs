@@ -26,13 +26,12 @@ module Iolaus.Crypto.Salt
   ( Salt
   , SharedSalt(..)
   , getSalt
-  , salt
-  , sharedSalt
   , recommended
   , generate
   , generate'
   , encode
   , pack
+  , packBS
   ) where
 
 --------------------------------------------------------------------------------
@@ -76,18 +75,6 @@ newtype SharedSalt = SharedSalt { getSharedSalt :: Salt }
   deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
--- | Convert from a text-encoded 'Salt'.  This expects the text to
--- have come from the 'encode' function.
-salt :: Text -> Either CryptoError Salt
-salt = pack . getBytes . Encoding.decode
-
---------------------------------------------------------------------------------
--- | Convert from a text-encoded 'Salt'.  This expects the text to
--- have come from the 'encode' function.
-sharedSalt :: Text -> Either CryptoError SharedSalt
-sharedSalt = fmap SharedSalt . salt
-
---------------------------------------------------------------------------------
 -- | The recommended salt length (as per RFC 8018 section 4).
 recommended :: Int
 recommended = 8 -- 64 bits.
@@ -112,10 +99,15 @@ encode :: Salt -> Text
 encode = Encoding.encode . Encoding . getSalt
 
 --------------------------------------------------------------------------------
--- | Use an existing 'ByteString' as 'Salt'.  The 'ByteString' must
--- contain as least as many bytes as recommended.
-pack :: ByteString -> Either CryptoError Salt
-pack bs =
+-- | The inverse of 'encode'.
+pack :: Text -> Either CryptoError Salt
+pack = packBS . getBytes . Encoding.decode
+
+--------------------------------------------------------------------------------
+-- | Convert an existing 'ByteString' to a salt.  You probably want to
+-- use 'pack' instead.
+packBS :: ByteString -> Either CryptoError Salt
+packBS bs =
   if ByteString.length bs >= recommended
-  then Right (Salt bs)
-  else Left InvalidSaltLength
+    then Right (Salt bs)
+    else Left InvalidSaltLength

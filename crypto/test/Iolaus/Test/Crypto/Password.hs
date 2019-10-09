@@ -54,7 +54,7 @@ run =
 
 --------------------------------------------------------------------------------
 salt :: (Monad m) => ByteString -> m Salt
-salt = either (const $ fail "should not happen") pure . Salt.pack
+salt = either (const $ fail "should not happen") pure . Salt.packBS
 
 --------------------------------------------------------------------------------
 -- | Random password generator.

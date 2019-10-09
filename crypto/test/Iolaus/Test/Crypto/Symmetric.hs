@@ -60,7 +60,7 @@ genKey :: Gen (ByteString, Key AES256)
 genKey = do
   bs <- Gen.bytes (Range.singleton 32)
 
-  case Key.convert $ Key.pack bs of
+  case Key.convert $ Key.packBS bs of
     Left e  -> fail ("should never happen: " <> show e)
     Right x -> pure (bs, x)
 

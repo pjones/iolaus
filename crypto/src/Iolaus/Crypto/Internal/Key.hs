@@ -22,11 +22,12 @@ Encryption keys.
 module Iolaus.Crypto.Internal.Key
   ( Key(..)
   , Unchecked
-  , pack
   , convert
   , generate
   , generate'
   , encode
+  , pack
+  , packBS
   ) where
 
 --------------------------------------------------------------------------------
@@ -74,11 +75,6 @@ keySize c =
     KeySizeEnum ns   -> foldr max 32 ns
 
 --------------------------------------------------------------------------------
--- | Pack a 'ByteString' into a key.
-pack :: ByteString -> Key Unchecked
-pack = Key
-
---------------------------------------------------------------------------------
 -- | Attempt to convert a 'Key' to one that will work for a specific cipher.
 --
 -- This is necessary because when a key is read from disk or the
@@ -104,3 +100,14 @@ generate' = Key <$> getRandomBytes (keySize (undefined :: c))
 -- | Encode a key for writing to a safe location.
 encode :: Key c -> Text
 encode = Encoding.encode . Encoding . getKey
+
+--------------------------------------------------------------------------------
+-- | The inverse of 'encode'
+pack :: Text -> Key Unchecked
+pack = Key . getBytes . Encoding.decode
+
+--------------------------------------------------------------------------------
+-- | Convert a 'ByteString' into a 'Key'.  You probably want to use
+-- 'pack' instead.
+packBS:: ByteString -> Key Unchecked
+packBS = Key

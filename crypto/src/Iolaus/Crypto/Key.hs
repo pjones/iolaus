@@ -19,11 +19,12 @@ Encryption keys.
 module Iolaus.Crypto.Key
   ( Key
   , Unchecked
-  , pack
   , convert
   , generate
   , generate'
   , encode
+  , pack
+  , packBS
   ) where
 
 import Iolaus.Crypto.Internal.Key
