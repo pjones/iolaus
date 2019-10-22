@@ -32,6 +32,8 @@ module Iolaus.Validation.Assertions
 -- Library Imports:
 import Data.Char (isSpace)
 import Data.Int (Int64)
+import Data.List.NonEmpty (NonEmpty)
+import qualified Data.List.NonEmpty as NE
 import Data.Maybe
 import Data.Scientific (fromFloatDigits)
 import Data.Text (Text)
@@ -83,6 +85,10 @@ instance HasValidLength LText.Text where
 instance HasValidLength [a] where
   compareLength [] n = compare 0 n
   compareLength xs n = compare (fromIntegral $ length xs) n
+
+--------------------------------------------------------------------------------
+instance HasValidLength (NonEmpty a) where
+  compareLength ne = compare (fromIntegral $ NE.length ne)
 
 --------------------------------------------------------------------------------
 -- | Cannot be less than @n@.
