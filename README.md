@@ -19,6 +19,6 @@ Packages
 
 * [crypto](crypto): Simplified cryptography operations.
 
-* [opaleye](opaleye): Database queries and scheme migrations.
+* [opaleye](opaleye): Database queries and schema migrations.
 
 * [validation](validation): Data validation
