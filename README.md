@@ -17,4 +17,8 @@ with Classy Optics](https://talks.bfpg.org/talks/2015-06-09.next_level_mtl.html)
 Packages
 --------
 
+* [crypto](crypto): Simplified cryptography operations.
+
 * [opaleye](opaleye): Database queries and scheme migrations.
+
+* [validation](validation): Data validation
