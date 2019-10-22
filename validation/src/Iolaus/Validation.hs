@@ -30,6 +30,7 @@ module Iolaus.Validation (
   module Iolaus.Validation.Assertions,
   assert,
   assert',
+  passthru,
 
   Errors,
   errors,

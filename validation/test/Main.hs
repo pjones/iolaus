@@ -57,6 +57,7 @@ tests =
     , testWindow
     , testChangeType
     , testRemoveMaybe
+    , testPassthru
     , testAssertions
     ]
 
@@ -113,6 +114,12 @@ testRemoveMaybe = testCase "Remove Maybe" $ do
     go :: (Maybe Int, Maybe Text) -> Either Errors (Int, Text)
     go = validate ((,) <$> _1 ~? intRange 0 1 .?= 1       <?> "_1"
                        <*> _2 ~? notBlank     .?= "blank" <?> "_2")
+
+--------------------------------------------------------------------------------
+testPassthru :: TestTree
+testPassthru = testCase "Passthru" $ do
+  validate passthru 'A'                ^? _Right @?= Just 'A'
+  validate (_1 ~: passthru) ('A', 'B') ^? _Right @?= Just 'A'
 
 --------------------------------------------------------------------------------
 testAssertions :: TestTree

@@ -38,6 +38,7 @@ module Iolaus.Validation.Prim
   , (~?)
   , (.?=)
 
+  , passthru
   , assert
   , assert'
   , assertM
@@ -127,6 +128,11 @@ setField name v =
 (<?>) :: (Functor m) => ValidationT m r a -> Text -> ValidationT m r a
 (<?>) = flip setField
 infixr 5 <?>
+
+--------------------------------------------------------------------------------
+-- | Skip the current focus and pass it through without validation.
+passthru :: (Applicative m) => ValidationT m r r
+passthru = Validation (pure . pure)
 
 --------------------------------------------------------------------------------
 -- | Low-level (and pure) assertion.
