@@ -17,7 +17,7 @@ Copyright:
 License: BSD-2-Clause
 
 -}
-module Iolaus.Opaleye.Config
+module Iolaus.Database.Config
   ( Config(..)
   , defaultConfig
   ) where

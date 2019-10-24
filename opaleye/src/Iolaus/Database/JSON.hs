@@ -20,7 +20,7 @@ License: BSD-2-Clause
 Use PostgreSQL JSON columns to hold Haskell types.
 
 -}
-module Iolaus.Opaleye.JSON
+module Iolaus.Database.JSON
   (
     -- * How to use this module
     -- $use
@@ -63,7 +63,7 @@ import Database.PostgreSQL.Simple.FromField
 -- > import Data.Aeson (ToJSON, FromJSON)
 -- > import Data.Text (Text)
 -- > import GHC.Generics (Generic)
--- > import Iolaus.Opaleye.JSON (liftJSON)
+-- > import Iolaus.Database.JSON (liftJSON)
 -- >
 -- > data Person = Person
 -- >   { name :: Text

@@ -18,7 +18,7 @@ License: BSD-2-Clause
 Use newtype wrappers as database columns in Opaleye.
 
 -}
-module Iolaus.Opaleye.Newtype
+module Iolaus.Database.Newtype
   ( makeNewtypeInstances
   ) where
 

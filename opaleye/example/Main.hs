@@ -33,7 +33,7 @@ import Data.Profunctor.Product.TH (makeAdaptorAndInstance)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import GHC.Generics (Generic)
-import qualified Iolaus.Opaleye as DB
+import qualified Iolaus.Database as DB
 import Opaleye (Table, Field, table, tableField, selectTable)
 import qualified Opaleye as O
 import qualified Opaleye.Constant as C
@@ -50,7 +50,7 @@ import Paths_iolaus_opaleye (getDataDir)
 --------------------------------------------------------------------------------
 -- | Custom errors for this application.
 data AppError = GenericError Text
-              | DatabaseError DB.OpaleyeError
+              | DatabaseError DB.DBError
               deriving Show
 
 makeClassyPrisms ''AppError
@@ -58,15 +58,15 @@ makeClassyPrisms ''AppError
 -- Our custom error type needs to hold database errors and this is how
 -- Iolaus can find them.  The @AsError@ class is created by the lens
 -- library.
-instance DB.AsOpaleyeError AppError where
-  _OpaleyeError = _DatabaseError
+instance DB.AsDBError AppError where
+  _DBError = _DatabaseError
 
 
 --------------------------------------------------------------------------------
 -- | A custom reader environment for this application.
 data AppEnv = AppEnv
-  { _db        :: DB.Opaleye -- ^ The Opaleye run time.
-  , _something :: Text       -- ^ Example value.
+  { _db        :: DB.Database -- ^ The Database run time.
+  , _something :: Text        -- ^ Example value.
   }
 
 makeClassy ''AppEnv
@@ -74,8 +74,8 @@ makeClassy ''AppEnv
 -- Iolaus needs to know how to get the 'Opaleye' environment out of
 -- our application's reader environment.  This instance will tell it
 -- how to do that.
-instance DB.HasOpaleye AppEnv where
-  opaleye = db
+instance DB.HasDatabase AppEnv where
+  database = db
 
 --------------------------------------------------------------------------------
 -- | A custom transformer stack for your application:
@@ -100,9 +100,8 @@ newtype App a = App
            )
 
 -- Define how queries are lifted into your application:
-instance DB.MonadOpaleye App where
-  liftQuery = DB.runOpaleye
-  -- Or: App DB.runOpaleye if not using MonadIO
+instance DB.MonadDB App where
+  liftQuery = DB.liftQueryIO
 
 --------------------------------------------------------------------------------
 -- | Database table type.  Standard Opaleye stuff.
@@ -121,7 +120,7 @@ people = table "people" (pPerson
 
 --------------------------------------------------------------------------------
 -- | Insert a new person into the database.
-createNewPerson :: (DB.MonadOpaleye m) => Text -> Text -> m ()
+createNewPerson :: (DB.MonadDB m) => Text -> Text -> m ()
 createNewPerson fn ln = do
 
   let p = Person (C.constant fn) (C.constant ln)
@@ -131,7 +130,7 @@ createNewPerson fn ln = do
 --------------------------------------------------------------------------------
 -- | Example running a database SELECT from within our app's
 -- transformer stack.
-fetchEveryone :: (DB.MonadOpaleye m) => m [Person' Text]
+fetchEveryone :: (DB.MonadDB m) => m [Person' Text]
 fetchEveryone = DB.liftQuery (DB.select $ selectTable people)
 
 --------------------------------------------------------------------------------
@@ -156,7 +155,7 @@ main = do
   -- the schema files.  Set the @iolaus_opaleye_datadir@ environment
   -- variable to the directory containing the @example@ directory.
   config <- DB.defaultConfig . Text.pack <$> getEnv "DB_CONN"
-  opaleye <- DB.initOpaleye config (Just store)
+  opaleye <- DB.initDatabase config (Just store)
 
   -- Makes the name prompting in createNewPerson nicer.
   hSetBuffering stdout NoBuffering

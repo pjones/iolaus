@@ -34,8 +34,8 @@ import Data.Int (Int64)
 import Data.Profunctor.Product.TH (makeAdaptorAndInstance)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import qualified Iolaus.Opaleye as DB
-import Iolaus.Opaleye.Newtype (makeNewtypeInstances)
+import qualified Iolaus.Database as DB
+import Iolaus.Database.Newtype (makeNewtypeInstances)
 import Opaleye (Table, Field, table, tableField)
 import qualified Opaleye as O
 import qualified Opaleye.Constant as C

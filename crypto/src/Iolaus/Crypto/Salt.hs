@@ -41,7 +41,7 @@ import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
 import Data.Text (Text)
-import Iolaus.Opaleye.Newtype (makeNewtypeInstances)
+import Iolaus.Database.Newtype (makeNewtypeInstances)
 import Opaleye.SqlTypes (SqlBytea)
 
 --------------------------------------------------------------------------------

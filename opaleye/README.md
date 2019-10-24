@@ -1,5 +1,5 @@
-Iolaus.Opaleye
-==============
+Iolaus.Database
+===============
 
 The goal of this library is to provide a simple wrapper around the
 [opaleye](https://hackage.haskell.org/package/opaleye) and
@@ -11,11 +11,11 @@ major components of an application.
 Using this library is fairly straight forward:
 
   1. Create your monad transformer stack and then make it an instance
-     of `AsOpaleyeError` and `HasOpaleye`.
+     of `AsDBError` and `HasDatabase`.
 
   2. Parse a `Config` value from a configuration file.
 
-  3. Call `initOpaleye` to create the `MonadReader` value you`ll need.
+  3. Call `initDatabase` to create the `MonadReader` value you`ll need.
 
   4. Use the query functions inside your transformer stack!
 

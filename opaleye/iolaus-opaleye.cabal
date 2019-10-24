@@ -59,13 +59,13 @@ library
   import: options, dependencies
   hs-source-dirs: src
   exposed-modules:
-    Iolaus.Opaleye
-    Iolaus.Opaleye.JSON
-    Iolaus.Opaleye.Newtype
+    Iolaus.Database
+    Iolaus.Database.JSON
+    Iolaus.Database.Newtype
 
   other-modules:
-    Iolaus.Opaleye.Config
-    Iolaus.Opaleye.Error
+    Iolaus.Database.Config
+    Iolaus.Database.Error
 
 --------------------------------------------------------------------------------
 executable example
