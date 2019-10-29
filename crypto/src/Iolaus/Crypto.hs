@@ -28,6 +28,7 @@ module Iolaus.Crypto
   , runCrypto
   , initCrypto
   , HasCrypto(crypto)
+  , CryptoError(..)
   , AsCryptoError(..)
   , MonadCrypto(..)
 
@@ -197,7 +198,7 @@ encrypt
   => Key c
   -> a
   -> m (Secret c a)
-encrypt key x = liftCrypto $ (Symmetric.encrypt key x >>= CryptoOp . liftEither)
+encrypt key x = liftCrypto (Symmetric.encrypt key x >>= CryptoOp . liftEither)
 
 --------------------------------------------------------------------------------
 -- | See 'Symmetric.decrypt' in "Iolaus.Crypto.Symmetric".
