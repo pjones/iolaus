@@ -50,9 +50,7 @@ import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
 import Data.Profunctor.Product.Default (Default(..))
 import Data.String (IsString(..))
-import Data.Text (Text, strip)
-import Data.Text.Encoding (encodeUtf8)
-import Data.Text.ICU.Normalize (NormalizationMode(NFKC), normalize)
+import Data.Text (Text)
 import Data.Time.Calendar (Day)
 import Database.PostgreSQL.Simple.FromField (FromField(..), fromJSONField)
 import GHC.Generics (Generic)
@@ -70,7 +68,7 @@ import Opaleye
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Iolaus.Crypto.Encoding (Encoding(..))
+import Iolaus.Crypto.Encoding (Encoding(..), normalize)
 import Iolaus.Crypto.Salt (Salt(..), SharedSalt(..))
 import qualified Iolaus.Crypto.Salt as Salt
 import Iolaus.Crypto.Password.Settings (Settings(..))
@@ -165,8 +163,7 @@ instance Default Constant (Password Hashed) (Column SqlJsonb) where
 -- content of the password is not modified or truncated in any other
 -- way.
 password :: Text -> Password Clear
-password = (\t -> Password (Clear t) (encodeUtf8 t)) . unicode
-  where unicode = normalize NFKC . strip
+password t = Password (Clear t) (normalize t)
 
 --------------------------------------------------------------------------------
 -- | Determine the strength of a password using the zxcvbn algorithm

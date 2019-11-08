@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE TemplateHaskell            #-}
 
 {-|
 
@@ -27,7 +26,6 @@ system-wide salt to mitigate brute-force attacks against the database.
 module Iolaus.Crypto.SaltedHash
   ( SaltedHash
   , saltedHash
-  , saltedHash'
   , ForSaltedHash(..)
   ) where
 
@@ -41,15 +39,13 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString as ByteString
 import Data.Profunctor.Product.Default (Default(def))
 import Data.Text (Text)
-import Data.Text.Encoding (encodeUtf8)
-import Data.Text.ICU.Normalize (NormalizationMode(NFKC), normalize)
 import Database.PostgreSQL.Simple.FromField (FromField(..))
 
 import Opaleye
   ( Constant(..)
   , Column
   , QueryRunnerColumnDefault(..)
-  , SqlText
+  , SqlBytea
   , fieldQueryRunnerColumn
   , toFields
   )
@@ -62,57 +58,48 @@ import Iolaus.Crypto.Salt (Salt(..), SharedSalt(..))
 
 --------------------------------------------------------------------------------
 -- | A type that represents a salted and hashed value.
-newtype SaltedHash a = SaltedHash { getHash :: Text }
+newtype SaltedHash a = SaltedHash { getHash :: ByteString }
   deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
 instance ToJSON (SaltedHash a) where
-  toJSON = toJSON . getHash
+  toJSON = toJSON . Encoding.encode . Encoding . getHash
 
 instance FromJSON (SaltedHash a) where
-  parseJSON = fmap SaltedHash . Aeson.parseJSON
+  parseJSON = fmap (SaltedHash . getBytes . Encoding.decode) . Aeson.parseJSON
 
 --------------------------------------------------------------------------------
 instance FromField (SaltedHash a) where
   fromField f b = SaltedHash <$> fromField f b
 
-instance QueryRunnerColumnDefault SqlText (SaltedHash a) where
+instance QueryRunnerColumnDefault SqlBytea (SaltedHash a) where
   queryRunnerColumnDefault = fieldQueryRunnerColumn
 
-instance Default Constant (SaltedHash a) (Column SqlText) where
+instance Default Constant (SaltedHash a) (Column SqlBytea) where
   def = Constant (toFields . getHash)
 
 --------------------------------------------------------------------------------
 -- | Types that can be salted and hashed.
 class ForSaltedHash a where
-  -- | Unicode text representing a value of type @a@.
-  forSaltedHash :: a -> Text
+  -- | Convert to a 'ByteString' prior to hashing.
+  forSaltedHash :: a -> ByteString
+
+instance ForSaltedHash ByteString where
+  forSaltedHash = id
 
 instance ForSaltedHash Text where
-  forSaltedHash = id
+  forSaltedHash = Encoding.normalize
 
 --------------------------------------------------------------------------------
 -- | Generate a cryptographic hash of the input type after running it
 -- through a Unicode normalization process (NFKC) and salting it.
 saltedHash :: (ForSaltedHash a) => SharedSalt -> a -> SaltedHash a
-saltedHash salt =
+saltedHash (SharedSalt salt) =
   SaltedHash
-    . getHash
-    . saltedHash' salt
-    . encodeUtf8
-    . normalize NFKC
-    . forSaltedHash
-
---------------------------------------------------------------------------------
--- | Specialized version of 'saltedHash' for 'ByteString' values.
-saltedHash' :: SharedSalt -> ByteString -> SaltedHash ByteString
-saltedHash' (SharedSalt salt) =
-  SaltedHash
-    . Encoding.encode
-    . Encoding
     . ByteString.pack
     . ByteArray.unpack
     . hash
+    . forSaltedHash
   where
     hash :: ByteString -> Hash.Digest Hash.SHA3_512
     hash = Hash.hash . (getSalt salt <>)

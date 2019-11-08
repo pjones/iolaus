@@ -41,6 +41,7 @@ module Iolaus.Crypto
   , encrypt
   , decrypt
   , saltedHash
+  , hashedSecret
 
   , Password
   , Clear
@@ -49,6 +50,7 @@ module Iolaus.Crypto
   , VerifyStatus(..)
   , Secret
   , SaltedHash
+  , HashedSecret(..)
 
   , Key
   , Salt
@@ -78,6 +80,8 @@ import qualified Text.Password.Strength.Config as Zxcvbn
 -- Project Imports:
 import Iolaus.Crypto.Cipher
 import Iolaus.Crypto.Error (CryptoError(..), AsCryptoError(..), liftCryptoError)
+import Iolaus.Crypto.HashedSecret (HashedSecret)
+import qualified Iolaus.Crypto.HashedSecret as HashedSecret
 import Iolaus.Crypto.Key (Key)
 import Iolaus.Crypto.Password (Password, Clear, Strong, Hashed, VerifyStatus)
 import qualified Iolaus.Crypto.Password as Password
@@ -222,3 +226,18 @@ saltedHash
   -> a
   -> m (SaltedHash a)
 saltedHash salt x = liftCrypto $ pure $ SaltedHash.saltedHash salt x
+
+--------------------------------------------------------------------------------
+-- | See 'HashedSecret.hashedSecret' in "Iolaus.Crypto.HashedSecret".
+hashedSecret
+  :: ( MonadCrypto m
+     , Binary a
+     , BlockCipher c
+     , ForSaltedHash a
+     )
+  => Key c
+  -> SharedSalt
+  -> a
+  -> m (HashedSecret c a)
+hashedSecret key salt x =
+  liftCrypto (HashedSecret.hashedSecret key salt x >>= CryptoOp . liftEither)

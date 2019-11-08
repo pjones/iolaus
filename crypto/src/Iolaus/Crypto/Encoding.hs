@@ -22,6 +22,7 @@ module Iolaus.Crypto.Encoding
   ( Encoding(..)
   , encode
   , decode
+  , normalize
   ) where
 
 --------------------------------------------------------------------------------
@@ -32,6 +33,7 @@ import Data.ByteString.Char8 (ByteString)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
+import qualified Data.Text.ICU.Normalize as ICU
 
 --------------------------------------------------------------------------------
 -- | Store binary data as Base64 encoded text.
@@ -59,3 +61,9 @@ encode (Encoding bs) = decodeUtf8 (Base64.encode bs)
 -- | Decode Base64 text back into binary format.
 decode :: Text -> Encoding
 decode = Encoding . Base64.decodeLenient . encodeUtf8
+
+--------------------------------------------------------------------------------
+-- | Normalize text so that it will hash the same way given different
+-- representations.
+normalize :: Text -> ByteString
+normalize = encodeUtf8 . ICU.normalize ICU.NFKC . Text.strip

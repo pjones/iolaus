@@ -120,7 +120,7 @@ encrypt
   -- ^ The encryption key.
 
   -> a
-  -- ^ The text to encrypt.
+  -- ^ The value to encrypt.
 
   -> m (Either CryptoError (Secret c a))
   -- ^ If successful, the encrypted secret.
@@ -140,7 +140,7 @@ encrypt'
   -- ^ The encryption key.
 
   -> a
-  -- ^ The text to encrypt.
+  -- ^ The value to encrypt.
 
   -> Either CryptoError (Secret c a)
   -- ^ If successful, the encrypted secret.
@@ -153,20 +153,20 @@ encrypt' iv (Key key) x = do
   pure $ Secret ts
 
 --------------------------------------------------------------------------------
--- | Decrypt text that was previously encrypted.
+-- | Decrypt a value that was previously encrypted.
 decrypt
   :: forall a c.
      ( Binary a
      , Cryptonite.BlockCipher c
      )
   => Key c
-  -- ^ The encryption key used to encrypt the text.
+  -- ^ The encryption key used to encrypt the value.
 
   -> Secret c a
   -- ^ The previously encrypted secret.
 
   -> Either CryptoError a
-  -- ^ If successful, the decrypted text.
+  -- ^ If successful, the decrypted value.
 decrypt (Key key) (Secret ts) = do
   let bs = getBytes (Encoding.decode ts)
       size = Cryptonite.blockSize (undefined :: c)

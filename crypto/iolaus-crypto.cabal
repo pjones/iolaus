@@ -59,6 +59,7 @@ library
     Iolaus.Crypto
       Iolaus.Crypto.Cipher
       Iolaus.Crypto.Error
+      Iolaus.Crypto.HashedSecret
       Iolaus.Crypto.IV
       Iolaus.Crypto.Key
       Iolaus.Crypto.Password
