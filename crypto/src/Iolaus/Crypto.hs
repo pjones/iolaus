@@ -32,8 +32,10 @@ module Iolaus.Crypto
   , AsCryptoError(..)
   , MonadCrypto(..)
 
-  , password
-  , strength
+  , Password.password
+  , passwordM
+  , Password.strength
+  , strengthM
   , hash
   , verify
   , encrypt
@@ -112,9 +114,6 @@ instance MonadRandom CryptoOp where
 class (Monad m) => MonadCrypto m where
   liftCrypto :: CryptoOp a -> m a
 
-instance MonadCrypto CryptoOp where
-  liftCrypto = id
-
 --------------------------------------------------------------------------------
 -- | Run a crypto operation and return the result.
 --
@@ -152,19 +151,19 @@ initCrypto =
   Crypto <$> pure Password.defaultSettings -- FIXME: calculate this!
 
 --------------------------------------------------------------------------------
--- | See 'Password.password' in "Iolaus.Crypto.Password".
-password :: (Monad m) => Text -> m (Password Clear)
-password = pure . Password.password
+-- | Monadic version of 'Password.password'.
+passwordM :: (Monad m) => Text -> m (Password Clear)
+passwordM = pure . Password.password
 
 --------------------------------------------------------------------------------
--- | See 'Password.strength' in "Iolaus.Crypto.Password".
-strength
+-- | Monadic version of 'Password.strength'.
+strengthM
   :: (Monad m)
   => Zxcvbn.Config
   -> Time.Day
   -> Password Clear
   -> m (Either Zxcvbn.Score (Password Strong))
-strength c d = pure . Password.strength c d
+strengthM c d = pure . Password.strength c d
 
 --------------------------------------------------------------------------------
 -- | See 'Password.hash' in "Iolaus.Crypto.Password".
