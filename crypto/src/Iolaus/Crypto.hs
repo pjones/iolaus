@@ -44,6 +44,7 @@ module Iolaus.Crypto
   , Clear
   , Strong
   , Hashed
+  , VerifyStatus(..)
   , Secret
   , SaltedHash
 
