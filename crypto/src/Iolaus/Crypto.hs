@@ -69,8 +69,9 @@ import Control.Monad.Except (ExceptT, MonadError, runExceptT, liftEither)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (ReaderT, MonadReader, runReaderT, ask)
 import Control.Monad.Trans.Class (lift)
-import Crypto.Random (MonadRandom(getRandomBytes))
+import Crypto.Random (MonadRandom(..), DRG(..), ChaChaDRG, drgNew)
 import Data.Binary (Binary)
+import Data.IORef
 import Data.Text (Text)
 import qualified Data.Time.Calendar as Time
 import qualified Text.Password.Strength as Zxcvbn
@@ -96,6 +97,9 @@ import qualified Iolaus.Crypto.Symmetric as Symmetric
 data Crypto = Crypto
   { _pset :: Password.Settings
     -- ^ Password settings.
+
+  , _drg :: IORef ChaChaDRG
+    -- ^ Random number generator.
   }
 
 makeClassy ''Crypto
@@ -111,7 +115,15 @@ newtype CryptoOp a = CryptoOp
            )
 
 instance MonadRandom CryptoOp where
-  getRandomBytes = CryptoOp . lift . lift . getRandomBytes
+  getRandomBytes n = do
+      slot <- view drg
+      gen  <- io (readIORef slot)
+
+      let (bytes, gen') = randomBytesGenerate n gen
+
+      io (writeIORef slot gen')
+      pure bytes
+    where io = CryptoOp . lift . lift
 
 --------------------------------------------------------------------------------
 -- | A class of types that can perform cryptography operations.
@@ -148,11 +160,12 @@ runCrypto k = do
 -- operations.  Place this value in your @Reader@ environment and make
 -- it an instance of 'HasCrypto'.
 initCrypto
-  :: ( Monad m
+  :: ( MonadIO m
      )
   => m Crypto
 initCrypto =
   Crypto <$> pure Password.defaultSettings -- FIXME: calculate this!
+         <*> liftIO (drgNew >>= newIORef)
 
 --------------------------------------------------------------------------------
 -- | Monadic version of 'Password.password'.
