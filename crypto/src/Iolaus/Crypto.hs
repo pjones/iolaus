@@ -38,8 +38,12 @@ module Iolaus.Crypto
   , strengthM
   , hash
   , verify
+  , generateKey
   , encrypt
   , decrypt
+  , generateSalt
+  , encodeSalt
+  , decodeSalt
   , saltedHash
   , hashedSecret
 
@@ -84,9 +88,11 @@ import Iolaus.Crypto.Error (CryptoError(..), AsCryptoError(..), liftCryptoError)
 import Iolaus.Crypto.HashedSecret (HashedSecret)
 import qualified Iolaus.Crypto.HashedSecret as HashedSecret
 import Iolaus.Crypto.Key (Key)
+import qualified Iolaus.Crypto.Key as Key
 import Iolaus.Crypto.Password (Password, Clear, Strong, Hashed, VerifyStatus)
 import qualified Iolaus.Crypto.Password as Password
 import Iolaus.Crypto.Salt (Salt, SharedSalt(..))
+import qualified Iolaus.Crypto.Salt as Salt
 import Iolaus.Crypto.SaltedHash (ForSaltedHash, SaltedHash)
 import qualified Iolaus.Crypto.SaltedHash as SaltedHash
 import Iolaus.Crypto.Symmetric (Secret)
@@ -206,6 +212,15 @@ verify salt pc ph = liftCrypto $ do
   pure $ Password.verify salt _pset pc ph
 
 --------------------------------------------------------------------------------
+-- | Generate a new encryption key.
+generateKey
+  :: ( MonadCrypto m
+     , Cipher c
+     )
+  => m (Key c)
+generateKey = liftCrypto Key.generate'
+
+--------------------------------------------------------------------------------
 -- | See 'Symmetric.encrypt' in "Iolaus.Crypto.Symmetric".
 encrypt
   :: ( MonadCrypto m
@@ -228,6 +243,26 @@ decrypt
   -> Secret c a
   -> m a
 decrypt key x = liftCrypto $ CryptoOp $ liftEither (Symmetric.decrypt key x)
+
+--------------------------------------------------------------------------------
+-- | Generate salt using the recommended length.
+generateSalt
+  :: ( MonadCrypto m )
+  => m Salt
+generateSalt = liftCrypto Salt.generate
+
+--------------------------------------------------------------------------------
+-- | Encode salt so that it can be stored in a file or database.
+encodeSalt :: Salt -> Text
+encodeSalt = Salt.encode
+
+--------------------------------------------------------------------------------
+-- | Decode salt from 'Text'.
+decodeSalt
+  :: ( MonadCrypto m )
+  => Text
+  -> m Salt
+decodeSalt = liftCrypto . CryptoOp . liftEither . Salt.pack
 
 --------------------------------------------------------------------------------
 -- | See 'SaltedHash.saltedHash' in "Iolaus.Crypto.SaltedHash".
