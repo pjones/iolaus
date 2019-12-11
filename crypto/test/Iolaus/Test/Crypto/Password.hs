@@ -37,10 +37,7 @@ import qualified Text.Password.Strength.Config as Zxcvbn
 
 --------------------------------------------------------------------------------
 -- Package Imports:
-import Iolaus.Crypto.Password (Password, Clear, Strong)
-import qualified Iolaus.Crypto.Password as Password
-import Iolaus.Crypto.Salt (Salt(..), SharedSalt(..))
-import qualified Iolaus.Crypto.Salt as Salt
+import Iolaus.Crypto
 
 --------------------------------------------------------------------------------
 -- | Main entry point.
@@ -54,7 +51,7 @@ run =
 
 --------------------------------------------------------------------------------
 salt :: (Monad m) => ByteString -> m Salt
-salt = either (const $ fail "should not happen") pure . Salt.packBS
+salt = either (const $ fail "should not happen") pure . toSalt
 
 --------------------------------------------------------------------------------
 -- | Random password generator.
@@ -65,7 +62,7 @@ genClearPassword = Gen.text (Range.linear 6 255) Gen.unicode
 -- | Salt generator.
 genSalt :: Gen Salt
 genSalt = do
-  let minLen = Salt.recommended -- Anything less triggers NeedsUpgrade.
+  let minLen = recommendedSaltLen -- Anything less triggers NeedsUpgrade.
   Gen.bytes (Range.linear minLen (minLen * 2)) >>= salt
 
 --------------------------------------------------------------------------------
@@ -78,12 +75,12 @@ prop_hash_idempotent =
     saltP    <- forAll genSalt
     saltS    <- forAll (SharedSalt <$> genSalt)
 
-    let settings = Password.defaultSettings
-        clear  = Password.password password
-        hashed = Password.hash' saltS saltP settings strong
-        status = Password.verify saltS settings clear hashed
+    let settings = defaultSettings
+        clear  = toPassword password
+        hashed = toHashedPassword' saltS saltP settings strong
+        status = verifyPassword saltS settings clear hashed
 
-    status === Password.Match
+    status === PasswordsMatch
 
 --------------------------------------------------------------------------------
 -- | Give me some peace knowing that mismatching passwords are detected.
@@ -95,12 +92,12 @@ prop_hash_mismatch =
     saltP <- salt "abcdefghijk"
     saltS <- SharedSalt <$> salt "1234567890"
 
-    let settings = Password.defaultSettings
-        clearB   = Password.password (password <> "-extra")
-        hashed = Password.hash' saltS saltP settings strong
-        status = Password.verify saltS settings clearB hashed
+    let settings = defaultSettings
+        clearB   = toPassword (password <> "-extra")
+        hashed = toHashedPassword' saltS saltP settings strong
+        status = verifyPassword saltS settings clearB hashed
 
-    status === Password.Mismatch
+    status === PasswordMismatch
 
 --------------------------------------------------------------------------------
 -- | JSON encoding and decoding.
@@ -112,8 +109,8 @@ prop_hash_serialize =
     saltP <- salt "abcdefghijk"
     saltS <- SharedSalt <$> salt "1234567890"
 
-    let settings = Password.defaultSettings
-        hashed = Password.hash' saltS saltP settings strong
+    let settings = defaultSettings
+        hashed = toHashedPassword' saltS saltP settings strong
 
     tripping hashed Aeson.encode Aeson.decode
 
@@ -124,13 +121,13 @@ prop_hash_serialize =
 -- things the way they are.
 mkStrong :: (Monad m) => Text -> m (Password Strong)
 mkStrong t =
-  case Password.strength cfg day clear of
+  case toStrongPassword cfg day clear of
     Left e  -> fail (show e <> " " <> show t)
     Right p -> pure p
 
   where
     clear :: Password Clear
-    clear = Password.password t
+    clear = toPassword t
 
     day :: Time.Day
     day = Time.fromGregorian 2019 1 1

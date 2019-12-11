@@ -3,7 +3,7 @@ cabal-version:       2.2
 --------------------------------------------------------------------------------
 name:                iolaus-crypto
 version:             0.1.0.0
--- synopsis:
+synopsis:            Easy to use cryptography library loosely based on PKCS#11
 description:         Please see the README.md file.
 license:             BSD-2-Clause
 license-file:        LICENSE
@@ -33,10 +33,12 @@ common options
 common dependencies
   build-depends: base                        >= 4.9   && < 5.0
                , aeson                       >= 1.3   && < 1.5
-               , base64-bytestring           >= 1.0   && < 1.1
                , binary                      >= 0.8   && < 1.0
                , bytestring                  >= 0.10  && < 0.11
                , cryptonite                  >= 0.25  && < 1.0
+               , directory                   >= 1.3   && < 1.4
+               , filepath                    >= 1.4   && < 1.5
+               , free                        >= 5.1   && < 5.2
                , iolaus-opaleye              >= 0.1   && < 0.2
                , lens                        >= 4.0   && < 5.0
                , memory                      >= 0.14  && < 1.0
@@ -44,6 +46,8 @@ common dependencies
                , opaleye                     >= 0.6   && < 0.7
                , postgresql-simple           >= 0.5   && < 0.7
                , product-profunctors         >= 0.10  && < 0.11
+               , safe-exceptions             >= 0.1   && < 0.2
+               , sandi                       >= 0.5   && < 0.6
                , text                        >= 1.2   && < 1.3
                , text-icu                    >= 0.7   && < 0.8
                , time                        >= 1.8   && < 2.0
@@ -57,22 +61,19 @@ library
 
   exposed-modules:
     Iolaus.Crypto
-      Iolaus.Crypto.Cipher
-      Iolaus.Crypto.Error
-      Iolaus.Crypto.HashedSecret
-      Iolaus.Crypto.IV
-      Iolaus.Crypto.Key
-      Iolaus.Crypto.Password
-      Iolaus.Crypto.Salt
-      Iolaus.Crypto.SaltedHash
-      Iolaus.Crypto.Symmetric
+    Iolaus.Crypto.Cryptonite
+    Iolaus.Crypto.Monad
 
   other-modules:
+    Iolaus.Crypto.Cryptonite.Symmetric
     Iolaus.Crypto.Encoding
-    Iolaus.Crypto.Internal.IV
-    Iolaus.Crypto.Internal.Key
-    Iolaus.Crypto.Internal.Password
-    Iolaus.Crypto.Password.Settings
+    Iolaus.Crypto.Error
+    Iolaus.Crypto.HashedSecret
+    Iolaus.Crypto.Password
+    Iolaus.Crypto.Key
+    Iolaus.Crypto.Salt
+    Iolaus.Crypto.SaltedHash
+    Iolaus.Crypto.Secret
 
 --------------------------------------------------------------------------------
 test-suite test
@@ -80,7 +81,8 @@ test-suite test
   type: exitcode-stdio-1.0
   hs-source-dirs: test
   main-is: Main.hs
-  build-depends: hedgehog       >= 0.6 && < 1.1
+  build-depends: containers     >= 0.6 && < 0.7
+               , hedgehog       >= 0.6 && < 1.1
                , iolaus-crypto
                , tasty          >= 1.1 && < 1.3
                , tasty-hedgehog >= 0.2 && < 1.1
@@ -88,3 +90,4 @@ test-suite test
   other-modules:
     Iolaus.Test.Crypto.Password
     Iolaus.Test.Crypto.Symmetric
+    Iolaus.Test.Crypto.Keys

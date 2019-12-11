@@ -28,7 +28,7 @@ module Iolaus.Crypto.Encoding
 --------------------------------------------------------------------------------
 -- Library Imports:
 import Data.Aeson (ToJSON(..), FromJSON(..))
-import qualified Data.ByteString.Base64.URL as Base64
+import qualified Codec.Binary.Base64Url as Base64
 import Data.ByteString.Char8 (ByteString)
 import Data.Text (Text)
 import qualified Data.Text as Text
@@ -60,7 +60,11 @@ encode (Encoding bs) = decodeUtf8 (Base64.encode bs)
 --------------------------------------------------------------------------------
 -- | Decode Base64 text back into binary format.
 decode :: Text -> Encoding
-decode = Encoding . Base64.decodeLenient . encodeUtf8
+decode = Encoding . check . Base64.decode . encodeUtf8
+  where
+    check :: Either (ByteString, ByteString) ByteString -> ByteString
+    check (Left (bs, _)) = bs
+    check (Right bs)     = bs
 
 --------------------------------------------------------------------------------
 -- | Normalize text so that it will hash the same way given different

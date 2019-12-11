@@ -58,6 +58,10 @@ import Iolaus.Crypto.Salt (Salt(..), SharedSalt(..))
 
 --------------------------------------------------------------------------------
 -- | A type that represents a salted and hashed value.
+--
+-- This is a simple wrapper around the SHA3 512 cryptographic hashing
+-- function with the addition of a salt to make brute force guessing
+-- more difficult.
 newtype SaltedHash a = SaltedHash { getHash :: ByteString }
   deriving (Eq, Show)
 
@@ -80,6 +84,14 @@ instance Default Constant (SaltedHash a) (Column SqlBytea) where
 
 --------------------------------------------------------------------------------
 -- | Types that can be salted and hashed.
+--
+-- While it might seem that this class could be replaced with
+-- 'Binary', there's a very important difference when it comes to
+-- hashing 'Text' values.
+--
+-- In order for the process to be deterministic, 'Text' values must go
+-- through a normalization process (NFKC) before being hashed.  That's
+-- precisely what the 'Text' instance does.
 class ForSaltedHash a where
   -- | Convert to a 'ByteString' prior to hashing.
   forSaltedHash :: a -> ByteString

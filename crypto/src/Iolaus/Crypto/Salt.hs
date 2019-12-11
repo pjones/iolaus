@@ -26,17 +26,16 @@ module Iolaus.Crypto.Salt
   ( Salt
   , SharedSalt(..)
   , getSalt
-  , recommended
-  , generate
-  , generate'
-  , encode
-  , pack
-  , packBS
+  , recommendedSaltLen
+  , generateSalt
+  , generateSalt'
+  , encodeSalt
+  , decodeSalt
+  , toSalt
   ) where
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import Crypto.Random (MonadRandom(..))
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
@@ -49,6 +48,7 @@ import Opaleye.SqlTypes (SqlBytea)
 import Iolaus.Crypto.Encoding (Encoding(..))
 import qualified Iolaus.Crypto.Encoding as Encoding
 import Iolaus.Crypto.Error (CryptoError(..))
+import Iolaus.Crypto.Monad
 
 --------------------------------------------------------------------------------
 -- | A binary salt that should only be used for a single secret.
@@ -76,13 +76,13 @@ newtype SharedSalt = SharedSalt { getSharedSalt :: Salt }
 
 --------------------------------------------------------------------------------
 -- | The recommended salt length (as per RFC 8018 section 4).
-recommended :: Int
-recommended = 8 -- 64 bits.
+recommendedSaltLen :: Int
+recommendedSaltLen = 8 -- 64 bits.
 
 --------------------------------------------------------------------------------
 -- | Generate a salt with the recommended length.
-generate :: (MonadRandom m) => m Salt
-generate = generate' recommended
+generateSalt :: (MonadCrypto m) => m Salt
+generateSalt = generateSalt' recommendedSaltLen
 
 --------------------------------------------------------------------------------
 -- | Generate a salt with the given number of bytes (which may not be
@@ -90,24 +90,23 @@ generate = generate' recommended
 --
 -- Attempting to generate fewer bytes than the recommended length will
 -- automatically upgrade the length to the recommended value.
-generate' :: (MonadRandom m) => Int -> m Salt
-generate' = fmap Salt . getRandomBytes . max recommended
+generateSalt' :: (MonadCrypto m) => Int -> m Salt
+generateSalt' = fmap Salt . liftCryptoOpt . generateRandom . max recommendedSaltLen
 
 --------------------------------------------------------------------------------
 -- | Encode salt for writing to a safe location.
-encode :: Salt -> Text
-encode = Encoding.encode . Encoding . getSalt
+encodeSalt :: Salt -> Text
+encodeSalt = Encoding.encode . Encoding . getSalt
 
 --------------------------------------------------------------------------------
--- | The inverse of 'encode'.
-pack :: Text -> Either CryptoError Salt
-pack = packBS . getBytes . Encoding.decode
+-- | The inverse of 'encodeSalt'.
+decodeSalt :: Text -> Either CryptoError Salt
+decodeSalt = toSalt . getBytes . Encoding.decode
 
 --------------------------------------------------------------------------------
--- | Convert an existing 'ByteString' to a salt.  You probably want to
--- use 'pack' instead.
-packBS :: ByteString -> Either CryptoError Salt
-packBS bs =
-  if ByteString.length bs >= recommended
+-- | Convert an existing 'ByteString' to a salt.
+toSalt :: ByteString -> Either CryptoError Salt
+toSalt bs =
+  if ByteString.length bs >= recommendedSaltLen
     then Right (Salt bs)
     else Left InvalidSaltLength

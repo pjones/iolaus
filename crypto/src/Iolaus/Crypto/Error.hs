@@ -29,11 +29,15 @@ import Control.Monad.Except (MonadError)
 import Control.Lens.TH (makeClassyPrisms)
 import Control.Monad.Error.Lens (throwing)
 import qualified Crypto.Error as CE
+import Data.Text (Text)
 
 --------------------------------------------------------------------------------
 -- | Errors that might occur while constructing an environment.
 data CryptoError = InvalidKeyLength
                  | InvalidSaltLength
+                 | KeyExistsError Text
+                 | KeyDoesNotExistError Text
+                 | KeyWriteFailure Text
                  | WrappedCryptoError CE.CryptoError
                  deriving Show
 
