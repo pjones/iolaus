@@ -32,14 +32,15 @@ import qualified Crypto.Error as CE
 import Data.Text (Text)
 
 --------------------------------------------------------------------------------
--- | Errors that might occur while constructing an environment.
-data CryptoError = InvalidKeyLength
-                 | InvalidSaltLength
-                 | KeyExistsError Text
-                 | KeyDoesNotExistError Text
-                 | KeyWriteFailure Text
-                 | WrappedCryptoError CE.CryptoError
-                 deriving Show
+-- | Errors that might occur during cryptographic operations.
+data CryptoError
+  = InvalidKeyLength
+  | InvalidSaltLength
+  | KeyExistsError Text
+  | KeyDoesNotExistError Text
+  | KeyWriteFailure Text
+  | WrappedCryptoError CE.CryptoError
+  deriving Show
 
 makeClassyPrisms ''CryptoError
 
