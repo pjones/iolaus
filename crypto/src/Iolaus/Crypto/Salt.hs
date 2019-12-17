@@ -101,7 +101,9 @@ encodeSalt = Encoding.encode . Encoding . getSalt
 --------------------------------------------------------------------------------
 -- | The inverse of 'encodeSalt'.
 decodeSalt :: Text -> Either CryptoError Salt
-decodeSalt = toSalt . getBytes . Encoding.decode
+decodeSalt t = do
+  e <- maybe (Left InvalidKeyLength) Right (Encoding.decode t)
+  toSalt (getBytes e)
 
 --------------------------------------------------------------------------------
 -- | Convert an existing 'ByteString' to a salt.

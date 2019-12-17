@@ -36,12 +36,13 @@ import Control.Monad.Free.Church (runF)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader
 import Crypto.Random (MonadRandom(..), DRG(..), ChaChaDRG, drgNew)
+import Data.ByteString (ByteString)
 import Data.IORef
-import qualified Crypto.Cipher.AES as C
 
 --------------------------------------------------------------------------------
 -- Project Imports:
 import Iolaus.Crypto.Key
+import Iolaus.Crypto.Cryptonite.Asymmetric as Asymmetric
 import Iolaus.Crypto.Cryptonite.Symmetric as Symmetric
 import Iolaus.Crypto.Error
 import Iolaus.Crypto.Monad
@@ -74,35 +75,30 @@ instance (MonadIO m) => MonadRandom (CryptoniteT m) where
     return bytes
 
 --------------------------------------------------------------------------------
-type family ToBlockCipher (t :: Cipher) where
-  ToBlockCipher 'AES256 = C.AES256
-  ToBlockCipher t       = C.AES256
-
---------------------------------------------------------------------------------
 instance (MonadIO m) => MonadCrypto (CryptoniteT m) where
-  data Key (CryptoniteT m) c = CryptoniteKey Label (SymmetricKey (ToBlockCipher c))
+  data Key (CryptoniteT m) = CryptoniteKey Label SymmetricKey
+  data KeyPair (CryptoniteT m) = CryptoniteKeyPair Label AsymmetricKey
   liftCryptoOpt = evalCrypto
 
 --------------------------------------------------------------------------------
-evalCrypto :: forall m a. (MonadIO m) => CryptoOpt (CryptoniteT m) a -> CryptoniteT m a
+evalCrypto
+  :: forall m a. (MonadIO m)
+  => CryptoOpt (CryptoniteT m) a
+  -> CryptoniteT m a
 evalCrypto opt = runF opt return $ \case
   GenerateRandom n next ->
     getRandomBytes n >>= next
 
-  GenerateKey label next -> do
-    mgr <- asks envMgr
-    key@(SymmetricKey bs) <- Symmetric.generateKey
-    liftIO (managerPutKey mgr label bs) >>= \case
-      PutSucceeded -> next (CryptoniteKey label key)
-      PutKeyExists -> throwError (KeyExistsError (getLabelText label))
-      PutFailed    -> throwError (KeyWriteFailure (getLabelText label))
+  GenerateKey cipher label next -> do
+    key <- Symmetric.generateKey cipher
+    putKey label (Symmetric.fromKey key)
+    next (CryptoniteKey label key)
 
-  FetchKey label next -> do
-    mgr <- asks envMgr
-    liftIO (managerGetKey mgr label) >>= \case
-      GetFailed -> next Nothing
-      GetSucceeded bs -> do
-        key <- liftCryptoError (Symmetric.toKey bs)
+  FetchKey cipher label next ->
+    getKey label >>= \case
+      Nothing -> next Nothing
+      Just bs -> do
+        key <- liftCryptoError (Symmetric.toKey cipher label bs)
         next (Just (CryptoniteKey label key))
 
   Encrypt (CryptoniteKey label key) value next ->
@@ -110,6 +106,49 @@ evalCrypto opt = runF opt return $ \case
 
   Decrypt (CryptoniteKey _ key) sec next ->
     liftCryptoError (Symmetric.decrypt key sec) >>= next
+
+  GenerateKeyPair algo label next -> do
+    key <- Asymmetric.generateKeyPair algo
+    putKey label (Asymmetric.fromKey key)
+    next (CryptoniteKeyPair label key)
+
+  FetchKeyPair algo label next ->
+    getKey label >>= \case
+      Nothing -> next Nothing
+      Just bs -> do
+        key <- liftCryptoError (Asymmetric.toKey algo label bs)
+        next (Just (CryptoniteKeyPair label key))
+
+  ToPublicKey (CryptoniteKeyPair _ key) next ->
+    next (Asymmetric.toPublicKey key)
+
+  AsymmetricEncrypt label key bs next ->
+    Asymmetric.encrypt label key bs >>= next
+
+  AsymmetricDecrypt (CryptoniteKeyPair _ key) secret next ->
+    Asymmetric.decrypt key secret >>= next
+
+  AsymmetricSign (CryptoniteKeyPair _ key) hash bs next ->
+    Asymmetric.sign key hash bs >>= next
+
+  VerifySignature pub sig bs next ->
+    Asymmetric.verify pub sig bs >>= next
+
+  where
+    putKey :: Label -> ByteString -> CryptoniteT m ()
+    putKey label bs = do
+      mgr <- asks envMgr
+      liftIO (managerPutKey mgr label bs) >>= \case
+        PutSucceeded -> return ()
+        PutKeyExists -> throwError (KeyExistsError (getLabelText label))
+        PutFailed    -> throwError (KeyWriteFailure (getLabelText label))
+
+    getKey :: Label -> CryptoniteT m (Maybe ByteString)
+    getKey label = do
+      mgr <- asks envMgr
+      liftIO (managerGetKey mgr label) >>= \case
+        GetFailed -> return Nothing
+        GetSucceeded bs -> return (Just bs)
 
 --------------------------------------------------------------------------------
 -- | Create a configuration value needed to run cryptographic operations.

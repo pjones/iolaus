@@ -22,13 +22,15 @@ module Iolaus.Crypto.Encoding
   ( Encoding(..)
   , encode
   , decode
+  , decodeM
   , normalize
   ) where
 
 --------------------------------------------------------------------------------
 -- Library Imports:
+import Control.Monad (MonadPlus, mzero, (<=<))
 import Data.Aeson (ToJSON(..), FromJSON(..))
-import qualified Codec.Binary.Base64Url as Base64
+import qualified Data.ByteArray.Encoding as Base
 import Data.ByteString.Char8 (ByteString)
 import Data.Text (Text)
 import qualified Data.Text as Text
@@ -46,7 +48,7 @@ instance ToJSON Encoding where
 
  -------------------------------------------------------------------------------
 instance FromJSON Encoding where
-  parseJSON = fmap decode . parseJSON
+  parseJSON = decodeM <=< parseJSON
 
 --------------------------------------------------------------------------------
 instance Show Encoding where
@@ -55,16 +57,25 @@ instance Show Encoding where
 --------------------------------------------------------------------------------
 -- | Encode a binary value as text (Base64).
 encode :: Encoding -> Text
-encode (Encoding bs) = decodeUtf8 (Base64.encode bs)
+encode (Encoding bs) = decodeUtf8 (Base.convertToBase Base.Base64URLUnpadded bs)
 
 --------------------------------------------------------------------------------
 -- | Decode Base64 text back into binary format.
-decode :: Text -> Encoding
-decode = Encoding . check . Base64.decode . encodeUtf8
+decode :: Text -> Maybe Encoding
+decode = fmap Encoding .
+         check . Base.convertFromBase Base.Base64URLUnpadded . encodeUtf8
   where
-    check :: Either (ByteString, ByteString) ByteString -> ByteString
-    check (Left (bs, _)) = bs
-    check (Right bs)     = bs
+    check :: Either l ByteString -> Maybe ByteString
+    check (Left _)   = Nothing
+    check (Right bs) = Just bs
+
+--------------------------------------------------------------------------------
+-- | Decode with failure.
+decodeM :: (MonadPlus m) => Text -> m Encoding
+decodeM t =
+  case decode t of
+    Nothing -> mzero
+    Just e  -> return e
 
 --------------------------------------------------------------------------------
 -- | Normalize text so that it will hash the same way given different

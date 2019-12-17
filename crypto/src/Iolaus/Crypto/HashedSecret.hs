@@ -44,10 +44,11 @@ import Opaleye
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Iolaus.Crypto.SaltedHash
+import Iolaus.Crypto.API
+import Iolaus.Crypto.Monad(MonadCrypto, Key)
 import Iolaus.Crypto.Salt
+import Iolaus.Crypto.SaltedHash
 import Iolaus.Crypto.Secret
-import Iolaus.Crypto.Monad
 
 --------------------------------------------------------------------------------
 -- | A convenience type for both encrypting and hashing a single
@@ -80,10 +81,8 @@ toHashedSecret
      , Binary a
      , ForSaltedHash a
      )
-  => Key m c     -- ^ The encryption key to use.
+  => Key m       -- ^ The encryption key to use.
   -> SharedSalt  -- ^ The salt to use for hashing.
   -> a           -- ^ The value to protect.
   -> m (HashedSecret a)
-toHashedSecret k s a = do
-  e <- liftCryptoOpt (encrypt k a)
-  return (HashedSecret (saltedHash s a) e)
+toHashedSecret k s a = HashedSecret (saltedHash s a) <$> encrypt k a

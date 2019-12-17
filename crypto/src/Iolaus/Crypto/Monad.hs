@@ -39,15 +39,17 @@ module Iolaus.Crypto.Monad (
   -- * Smart Constructors for the Free Monad
   generateRandom,
   generateKey,
-  -- , generateKeyPair
   fetchKey,
-  -- , fetchKeyPair
   encrypt,
-  -- , encryptA
-  decrypt
-  -- , decryptA
-  -- , signA
-  -- , verifyA
+  decrypt,
+
+  generateKeyPair,
+  fetchKeyPair,
+  toPublicKey,
+  asymmetricEncrypt,
+  asymmetricDecrypt,
+  asymmetricSign,
+  verifySignature
   ) where
 
 --------------------------------------------------------------------------------
@@ -55,19 +57,16 @@ module Iolaus.Crypto.Monad (
 import Crypto.Random (MonadRandom)
 import Control.Monad.Free.Church (MonadFree(..), F, liftF)
 import Control.Monad.Free.TH (makeFree)
-import Data.Binary (Binary)
 import Data.ByteString (ByteString)
 
 --------------------------------------------------------------------------------
 -- Project Imports:
 import Iolaus.Crypto.Key
 import Iolaus.Crypto.Secret
+import Iolaus.Crypto.Signature
 
 --------------------------------------------------------------------------------
--- data Signature a
-
---------------------------------------------------------------------------------
--- | A class of monads that can execute cryptographic operations.
+-- | A class of monads that can perform cryptographic operations.
 --
 -- Choose a concrete implementation from the instances list, or write
 -- your own.
@@ -77,9 +76,9 @@ class (MonadRandom m) => MonadCrypto (m :: * -> *) where
   -- Due to the fact that keys may be stored in a hardware device
   -- users are not allowed to access the implementation details of a
   -- key.  Therefore this type is completely opaque.
-  data Key m (c :: Cipher)
+  data Key m
 
-  -- data KeyPair m (g :: Algo)
+  data KeyPair m
 
   -- | The primary method of a cryptographic monad, evaluate a crypto
   -- operation.
@@ -88,18 +87,18 @@ class (MonadRandom m) => MonadCrypto (m :: * -> *) where
 --------------------------------------------------------------------------------
 -- | Primitive cryptographic operations as a Free Monad.
 data CryptoOptF (m :: * -> *) f
-  =               GenerateRandom Int (ByteString -> f)
-  | forall t.   GenerateKey Label (Key m t -> f)
-  --  forall t.   GenerateKeyPair Label (KeyPair m t -> f)
-  | forall t.   FetchKey Label (Maybe (Key m t) -> f)
-  --  forall t.   FetchKeyPair Label (Maybe (KeyPair m t) -> f)
-  | forall t a. (Binary a) => Encrypt (Key m t) a (Secret a -> f)
-  --  forall t a. (Binary a) => EncryptA (KeyPair m t) a (Secret a -> f)
-  | forall t a. (Binary a) => Decrypt (Key m t) (Secret a) (a -> f)
-  --  forall t a. (Binary a) => DecryptA (KeyPair m t) (Secret a) (a -> f)
-  --  forall t a. (Binary a) => SignA (KeyPair m t) a (Signature a -> f)
-  --  forall t a. VerifyA (KeyPair m t) (Signature a) (Bool -> f)
-
+  = GenerateRandom Int (ByteString -> f)
+  | GenerateKey Cipher Label (Key m -> f)
+  | FetchKey Cipher Label (Maybe (Key m) -> f)
+  | Encrypt (Key m) ByteString (Secret ByteString -> f)
+  | Decrypt (Key m) (Secret ByteString) (ByteString -> f)
+  | GenerateKeyPair Algo Label (KeyPair m -> f)
+  | FetchKeyPair Algo Label (Maybe (KeyPair m) -> f)
+  | ToPublicKey (KeyPair m) (PublicKey -> f)
+  | AsymmetricEncrypt Label PublicKey ByteString (Secret ByteString -> f)
+  | AsymmetricDecrypt (KeyPair m) (Secret ByteString) (ByteString -> f)
+  | AsymmetricSign (KeyPair m) Hash ByteString (Signature ByteString -> f)
+  | VerifySignature PublicKey (Signature ByteString) ByteString (SigStatus -> f)
 
 deriving instance Functor (CryptoOptF m)
 

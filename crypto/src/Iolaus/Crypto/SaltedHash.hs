@@ -31,6 +31,7 @@ module Iolaus.Crypto.SaltedHash
 
 --------------------------------------------------------------------------------
 -- Library Imports:
+import Control.Monad ((<=<))
 import qualified Crypto.Hash as Hash
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import qualified Data.Aeson as Aeson
@@ -70,7 +71,8 @@ instance ToJSON (SaltedHash a) where
   toJSON = toJSON . Encoding.encode . Encoding . getHash
 
 instance FromJSON (SaltedHash a) where
-  parseJSON = fmap (SaltedHash . getBytes . Encoding.decode) . Aeson.parseJSON
+  parseJSON = fmap (SaltedHash . getBytes) .
+    (Encoding.decodeM <=< Aeson.parseJSON)
 
 --------------------------------------------------------------------------------
 instance FromField (SaltedHash a) where

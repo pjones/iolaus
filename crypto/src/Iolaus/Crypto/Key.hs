@@ -1,7 +1,10 @@
-{-# LANGUAGE DataKinds      #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric  #-}
-{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE DataKinds       #-}
+{-# LANGUAGE DeriveAnyClass  #-}
+{-# LANGUAGE DeriveGeneric   #-}
+{-# LANGUAGE GADTs           #-}
+{-# LANGUAGE LambdaCase      #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies    #-}
 
 {-|
 
@@ -24,7 +27,11 @@ Types for selecting ciphers at compile time.
 module Iolaus.Crypto.Key
   ( Cipher(..)
   , Algo(..)
+  , Hash(..)
+  , decodeKey
   , PublicKey(..)
+  , encodePublicKey
+  , decodePublicKey
   , Label(..)
   , toLabel
   , getLabelText
@@ -36,14 +43,26 @@ module Iolaus.Crypto.Key
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import qualified Codec.Binary.Base32 as Base32
+import qualified Data.ByteArray.Encoding as Base
+import Control.Applicative ((<|>), empty)
 import Control.Exception.Safe (tryIO)
+import qualified Crypto.PubKey.RSA as RSA
+import Data.ASN1.BinaryEncoding (DER(..))
+import qualified Data.ASN1.Encoding as ASN1
+import Data.ASN1.Types (ASN1)
+import qualified Data.ASN1.Types as ASN1
 import Data.Aeson (ToJSON, FromJSON)
+import Data.Bifunctor (first)
+import Data.Binary (Binary)
+import qualified Data.Binary as Binary
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as ByteString
 import qualified Data.ByteString.Char8 as CBS
+import qualified Data.ByteString.Lazy as LBS
+import qualified Data.PEM as PEM
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
+import qualified Data.X509 as X509
 import GHC.Generics (Generic)
 import System.Directory (doesPathExist)
 import System.FilePath ((</>))
@@ -51,9 +70,69 @@ import System.FilePath ((</>))
 --------------------------------------------------------------------------------
 -- Package Imports:
 import qualified Iolaus.Crypto.Encoding as Encoding
+import Iolaus.Crypto.Error
 
 --------------------------------------------------------------------------------
-newtype PublicKey (c :: Algo) = PublicKey ByteString
+-- | The public key portion of a key pair.
+--
+-- To create a public key from a PEM encoded file, use the
+-- 'decodePublicKey' function.
+--
+-- To store a public key in a file or transmit it over the network,
+-- use the 'encodePublicKey' function.
+newtype PublicKey = RSAPubKey (Algo, RSA.PublicKey)
+  deriving (Eq, Show)
+
+--------------------------------------------------------------------------------
+-- | Encode a public key in standard PEM-encoded ASN1 DER format.
+encodePublicKey :: PublicKey -> ByteString
+encodePublicKey = PEM.pemWriteBS . mkPEM . forPEM . toX509
+  where
+    toX509 :: PublicKey -> X509.PubKey
+    toX509 (RSAPubKey (_, k)) = X509.PubKeyRSA k
+
+    forPEM :: X509.PubKey -> ByteString
+    forPEM = ASN1.encodeASN1' DER . ($ []) . ASN1.toASN1
+
+    mkPEM :: ByteString -> PEM.PEM
+    mkPEM = PEM.PEM "PUBLIC KEY" []
+
+--------------------------------------------------------------------------------
+-- | Decode a public key that was encoded in PEM ASN1 DER.  The first
+-- usable key found in the PEM stream is returned.
+decodePublicKey :: ByteString -> Maybe PublicKey
+decodePublicKey bs = do
+    pems <- toM (PEM.pemParseBS bs)
+    foldl (\a b -> a <|> fromPEM b) empty pems
+
+  where
+    fromPEM :: PEM.PEM -> Maybe PublicKey
+    fromPEM pem = do
+      as <- toM (ASN1.decodeASN1' DER (PEM.pemContent pem))
+      foldl (\a b -> a <|> fromX509 b) empty (toX509 as)
+
+    toX509 :: [ASN1] -> [X509.PubKey]
+    toX509 as = go ([], as)
+      where
+        un :: Either String (a, [ASN1]) -> ([a], [ASN1])
+        un (Left _) = ([], [])
+        un (Right (x, xs)) = ([x], xs)
+
+        go :: ([X509.PubKey], [ASN1]) -> [X509.PubKey]
+        go (xs, []) = xs
+        go (xs, ys) = go (first (xs ++) (un (ASN1.fromASN1 ys)))
+
+    fromX509 :: X509.PubKey -> Maybe PublicKey
+    fromX509 = \case
+      X509.PubKeyRSA k@(RSA.PublicKey n _ _)
+        | n == 256  -> Just (RSAPubKey (RSA2048, k))
+        | n == 512  -> Just (RSAPubKey (RSA4096, k))
+        | otherwise -> Nothing
+      _ -> Nothing
+
+    toM :: Either l r -> Maybe r
+    toM (Left _)  = Nothing
+    toM (Right x) = Just x
 
 --------------------------------------------------------------------------------
 -- | A label is a way to identify a key by a name.
@@ -67,41 +146,57 @@ newtype PublicKey (c :: Algo) = PublicKey ByteString
 -- To ensure the label is safe to use in hardware devices and as file
 -- names the underlying text is normalized and then base32 encoded.
 newtype Label = Label
-  { getLabel :: CBS.ByteString -- ^ Access the encoded label.
-  }
-  deriving (Eq, Ord, Show)
+  { getLabel  :: CBS.ByteString -- ^ Access the encoded label.
+  } deriving (Eq, Ord, Show)
 
 --------------------------------------------------------------------------------
 -- | Create a label from a 'Text' value.
 toLabel :: Text -> Label
-toLabel = Label . Base32.encode . Encoding.normalize
+toLabel = Label . Base.convertToBase Base.Base32 . Encoding.normalize
 
 --------------------------------------------------------------------------------
 -- | The inverse of 'toLabel'.
 getLabelText :: Label -> Text
-getLabelText = decodeUtf8 . check . Base32.decode . getLabel
+getLabelText Label{..} =
+    decodeUtf8 . check . Base.convertFromBase Base.Base32 $ getLabel
   where
-    check :: Either (ByteString, ByteString) ByteString -> ByteString
-    check (Left (bs, _)) = bs
-    check (Right bs)     = bs
+    check :: Either l ByteString -> ByteString
+    check (Left _)   = getLabel -- Should never happen.
+    check (Right bs) = bs
 
 --------------------------------------------------------------------------------
 -- | Supported symmetric ciphers.
+--
+-- Note: AES ciphers are used in GCM mode.
 data Cipher
-  = AES256 -- ^ https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
-
-  -- NOTE: If you add another constructor, you *must* update the
-  -- following type families, the compiler will not detect
-  -- non-exhaustiveness.
-  --
-  --   * ToBlockCipher (in Iolaus.Crypto.Cryptonite)
-  deriving (Generic, Eq, ToJSON, FromJSON)
+  = AES128 -- ^ https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
+  | AES192 -- ^ https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
+  | AES256 -- ^ https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
+  deriving (Generic, Eq, Ord, Show, Binary, ToJSON, FromJSON)
 
 --------------------------------------------------------------------------------
 -- | Supported asymmetric algorithms.
 data Algo
-  = RSA4096 -- ^ https://en.wikipedia.org/wiki/RSA_(cryptosystem)
-  deriving (Generic, Eq, ToJSON, FromJSON)
+  = RSA2048 -- ^ https://en.wikipedia.org/wiki/RSA_(cryptosystem)
+  | RSA4096 -- ^ https://en.wikipedia.org/wiki/RSA_(cryptosystem)
+  deriving (Generic, Eq, Ord, Show, Binary, ToJSON, FromJSON)
+
+--------------------------------------------------------------------------------
+-- | Supported hashing algorithms.
+data Hash
+  = SHA2_256 -- ^ https://en.wikipedia.org/wiki/Secure_Hash_Algorithms
+  | SHA2_384 -- ^ https://en.wikipedia.org/wiki/Secure_Hash_Algorithms
+  | SHA2_512 -- ^ https://en.wikipedia.org/wiki/Secure_Hash_Algorithms
+  deriving (Generic, Eq, Ord, Show, Binary, ToJSON, FromJSON)
+
+--------------------------------------------------------------------------------
+decodeKey :: (Binary a) => Label -> ByteString -> Either CryptoError a
+decodeKey label bs =
+  case Binary.decodeOrFail (LBS.fromStrict bs) of
+    Left _ -> Left (KeyReadFailure (getLabelText label))
+    Right (bs', _, k)
+      | LBS.null bs' -> Right k
+      | otherwise -> Left (KeyReadFailure (getLabelText label))
 
 --------------------------------------------------------------------------------
 -- | The result of fetching a key with a 'KeyManager'.

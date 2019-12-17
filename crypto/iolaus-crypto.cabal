@@ -33,6 +33,8 @@ common options
 common dependencies
   build-depends: base                        >= 4.9   && < 5.0
                , aeson                       >= 1.3   && < 1.5
+               , asn1-encoding               >= 0.9   && < 0.10
+               , asn1-types                  >= 0.3   && < 0.4
                , binary                      >= 0.8   && < 1.0
                , bytestring                  >= 0.10  && < 0.11
                , cryptonite                  >= 0.25  && < 1.0
@@ -44,14 +46,15 @@ common dependencies
                , memory                      >= 0.14  && < 1.0
                , mtl                         >= 2.2   && < 2.3
                , opaleye                     >= 0.6   && < 0.7
+               , pem                         >= 0.2   && < 0.3
                , postgresql-simple           >= 0.5   && < 0.7
                , product-profunctors         >= 0.10  && < 0.11
                , safe-exceptions             >= 0.1   && < 0.2
-               , sandi                       >= 0.5   && < 0.6
                , text                        >= 1.2   && < 1.3
                , text-icu                    >= 0.7   && < 0.8
                , time                        >= 1.8   && < 2.0
                , transformers                >= 0.5   && < 0.6
+               , x509                        >= 1.7   && < 1.8
                , zxcvbn-hs                   >= 0.3   && < 1.0
 
 --------------------------------------------------------------------------------
@@ -65,15 +68,18 @@ library
     Iolaus.Crypto.Monad
 
   other-modules:
+    Iolaus.Crypto.API
+    Iolaus.Crypto.Cryptonite.Asymmetric
     Iolaus.Crypto.Cryptonite.Symmetric
     Iolaus.Crypto.Encoding
     Iolaus.Crypto.Error
     Iolaus.Crypto.HashedSecret
-    Iolaus.Crypto.Password
     Iolaus.Crypto.Key
+    Iolaus.Crypto.Password
     Iolaus.Crypto.Salt
     Iolaus.Crypto.SaltedHash
     Iolaus.Crypto.Secret
+    Iolaus.Crypto.Signature
 
 --------------------------------------------------------------------------------
 test-suite test
@@ -84,10 +90,11 @@ test-suite test
   build-depends: containers     >= 0.6 && < 0.7
                , hedgehog       >= 0.6 && < 1.1
                , iolaus-crypto
-               , tasty          >= 1.1 && < 1.3
-               , tasty-hedgehog >= 0.2 && < 1.1
+               , tasty          >= 1.1  && < 1.3
+               , tasty-hedgehog >= 0.2  && < 1.1
+               , tasty-hunit    >= 0.10 && < 0.11
 
   other-modules:
     Iolaus.Test.Crypto.Password
-    Iolaus.Test.Crypto.Symmetric
+    Iolaus.Test.Crypto.Cryptonite
     Iolaus.Test.Crypto.Keys

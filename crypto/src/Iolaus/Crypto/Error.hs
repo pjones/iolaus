@@ -20,15 +20,18 @@ module Iolaus.Crypto.Error
   ( CryptoError(..)
   , AsCryptoError(..)
   , wrappedCryptoError
+  , fromFailable
+  , assert
   , liftCryptoError
   ) where
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import Control.Monad.Except (MonadError)
 import Control.Lens.TH (makeClassyPrisms)
 import Control.Monad.Error.Lens (throwing)
+import Control.Monad.Except (MonadError)
 import qualified Crypto.Error as CE
+import Data.Bifunctor (first)
 import Data.Text (Text)
 
 --------------------------------------------------------------------------------
@@ -36,9 +39,16 @@ import Data.Text (Text)
 data CryptoError
   = InvalidKeyLength
   | InvalidSaltLength
+  | MalformedCipherTextError
+  | MalformedSignatureTextError
+  | MissingAuthTagError
+  | AuthTagMismatchError
+  | CipherMismatchError Text
+  | AlgoMismatchError Text
   | KeyExistsError Text
   | KeyDoesNotExistError Text
   | KeyWriteFailure Text
+  | KeyReadFailure Text
   | WrappedCryptoError CE.CryptoError
   deriving Show
 
@@ -50,6 +60,15 @@ wrappedCryptoError :: CE.CryptoError -> CryptoError
 wrappedCryptoError CE.CryptoError_KeySizeInvalid = InvalidKeyLength
 wrappedCryptoError CE.CryptoError_SaltTooSmall   = InvalidSaltLength
 wrappedCryptoError e                             = WrappedCryptoError e
+
+--------------------------------------------------------------------------------
+-- | Helper function for dealing with the cryptonite 'CryptoFailable'.
+fromFailable :: CE.CryptoFailable b -> Either CryptoError b
+fromFailable = first wrappedCryptoError . CE.eitherCryptoError
+
+--------------------------------------------------------------------------------
+assert :: Bool -> CryptoError -> Either CryptoError ()
+assert b e = if b then Right () else Left e
 
 --------------------------------------------------------------------------------
 -- | Lift an @Either CryptoError a@ value into a @MonadError@ context.

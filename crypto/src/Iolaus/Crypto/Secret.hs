@@ -25,11 +25,12 @@ module Iolaus.Crypto.Secret
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import Data.Aeson (ToJSON(..), FromJSON(..), (.:), (.=))
+import Data.Aeson (ToJSON(..), FromJSON(..), (.:), (.:?), (.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as CBS
 import Data.Profunctor.Product.Default (Default(def))
+import Data.Text (Text)
 
 import Database.PostgreSQL.Simple.FromField
   ( FromField(..)
@@ -53,22 +54,28 @@ import Iolaus.Crypto.Key (Label(..))
 --------------------------------------------------------------------------------
 -- | A value of type @a@ that has been encrypted.
 data Secret a = Secret
-  { secretBytes :: ByteString  -- ^ The encrypted data.
-  , secretLabel :: Label       -- ^ The label for the key that was used.
-  }
-  deriving (Eq, Show)
+  { secretBytes :: ByteString        -- ^ The encrypted data.
+  , secretMAC   :: Maybe ByteString  -- ^ Optional authentication tag.
+  , secretLabel :: Label             -- ^ The label for the key that was used.
+  } deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
 instance ToJSON (Secret a) where
   toJSON s = Aeson.object
     [ "data" .= Encoding.encode (Encoding (secretBytes s))
+    , "mac"  .= fmap (Encoding.encode . Encoding) (secretMAC s)
     , "key"  .= CBS.unpack (getLabel (secretLabel s))
     ]
 
 instance FromJSON (Secret a) where
   parseJSON = Aeson.withObject "Secret" $ \v ->
-    Secret <$> fmap (Encoding.getBytes . Encoding.decode) (v .: "data")
+    Secret <$> fmap Encoding.getBytes (Encoding.decodeM =<< (v .: "data"))
+           <*> (decodeMaybe =<< (v .:? "mac"))
            <*> fmap (Label . CBS.pack) (v .: "key")
+
+    where
+      decodeMaybe :: Monad m => Maybe Text -> m (Maybe ByteString)
+      decodeMaybe t = fmap (fmap Encoding.getBytes) (return (t >>= Encoding.decode))
 
 --------------------------------------------------------------------------------
 instance FromField (Secret a) where

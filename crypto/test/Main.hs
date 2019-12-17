@@ -21,11 +21,11 @@ import Test.Tasty
 
 --------------------------------------------------------------------------------
 import qualified Iolaus.Test.Crypto.Password as Password
-import qualified Iolaus.Test.Crypto.Symmetric as Symmetric
+import qualified Iolaus.Test.Crypto.Cryptonite as Cryptonite
 
 --------------------------------------------------------------------------------
 main :: IO ()
 main = defaultMain $ testGroup "Tests"
   [ Password.run
-  , Symmetric.run
+  , Cryptonite.run
   ]
