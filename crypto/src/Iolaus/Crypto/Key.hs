@@ -75,7 +75,7 @@ import Iolaus.Crypto.Error
 --------------------------------------------------------------------------------
 -- | The public key portion of a key pair.
 --
--- To create a public key from a PEM encoded file, use the
+-- To create a public key from a PEM encoded 'ByteString', use the
 -- 'decodePublicKey' function.
 --
 -- To store a public key in a file or transmit it over the network,
@@ -84,7 +84,7 @@ newtype PublicKey = RSAPubKey (Algo, RSA.PublicKey)
   deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
--- | Encode a public key in standard PEM-encoded ASN1 DER format.
+-- | Encode a public key in standard PEM format.
 encodePublicKey :: PublicKey -> ByteString
 encodePublicKey = PEM.pemWriteBS . mkPEM . forPEM . toX509
   where
@@ -98,8 +98,8 @@ encodePublicKey = PEM.pemWriteBS . mkPEM . forPEM . toX509
     mkPEM = PEM.PEM "PUBLIC KEY" []
 
 --------------------------------------------------------------------------------
--- | Decode a public key that was encoded in PEM ASN1 DER.  The first
--- usable key found in the PEM stream is returned.
+-- | Decode a public key that was encoded in PEM.  The first usable
+-- key found in the PEM stream is returned.
 decodePublicKey :: ByteString -> Maybe PublicKey
 decodePublicKey bs = do
     pems <- toM (PEM.pemParseBS bs)
