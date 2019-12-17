@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeFamilies               #-}
 
@@ -22,6 +23,7 @@ License: BSD-2-Clause
 -}
 module Iolaus.Crypto.Cryptonite
   ( CryptoniteT
+  , Cryptonite
   , Config
   , fileManager
   , initCryptoniteT
@@ -66,6 +68,14 @@ newtype CryptoniteT m a = CryptoniteT
            )
 
 --------------------------------------------------------------------------------
+-- | Type used to index cryptographic operations and keys.
+data Cryptonite
+
+--------------------------------------------------------------------------------
+data instance Key Cryptonite = CryptoniteKey Label SymmetricKey
+data instance KeyPair Cryptonite = CryptoniteKeyPair Label AsymmetricKey
+
+--------------------------------------------------------------------------------
 instance (MonadIO m) => MonadRandom (CryptoniteT m) where
   getRandomBytes n = do
     slot <- asks envRG
@@ -75,15 +85,13 @@ instance (MonadIO m) => MonadRandom (CryptoniteT m) where
     return bytes
 
 --------------------------------------------------------------------------------
-instance (MonadIO m) => MonadCrypto (CryptoniteT m) where
-  data Key (CryptoniteT m) = CryptoniteKey Label SymmetricKey
-  data KeyPair (CryptoniteT m) = CryptoniteKeyPair Label AsymmetricKey
+instance (MonadIO m) => MonadCrypto Cryptonite (CryptoniteT m) where
   liftCryptoOpt = evalCrypto
 
 --------------------------------------------------------------------------------
 evalCrypto
   :: forall m a. (MonadIO m)
-  => CryptoOpt (CryptoniteT m) a
+  => CryptoOpt Cryptonite a
   -> CryptoniteT m a
 evalCrypto opt = runF opt return $ \case
   GenerateRandom n next ->

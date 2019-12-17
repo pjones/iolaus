@@ -82,6 +82,13 @@ library
     Iolaus.Crypto.Signature
 
 --------------------------------------------------------------------------------
+executable symmetric
+  import: options, dependencies
+  hs-source-dirs: examples
+  main-is: symmetric.hs
+  build-depends: iolaus-crypto
+
+--------------------------------------------------------------------------------
 test-suite test
   import: options, dependencies
   type: exitcode-stdio-1.0

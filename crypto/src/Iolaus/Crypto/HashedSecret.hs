@@ -77,11 +77,11 @@ instance Default Constant (HashedSecret a) (Column SqlJsonb) where
 --------------------------------------------------------------------------------
 -- | Encrypt and hash the given value.
 toHashedSecret
-  :: ( MonadCrypto m
+  :: ( MonadCrypto k m
      , Binary a
      , ForSaltedHash a
      )
-  => Key m       -- ^ The encryption key to use.
+  => Key k       -- ^ The encryption key to use.
   -> SharedSalt  -- ^ The salt to use for hashing.
   -> a           -- ^ The value to protect.
   -> m (HashedSecret a)

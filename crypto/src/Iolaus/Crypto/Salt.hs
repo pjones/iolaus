@@ -81,7 +81,7 @@ recommendedSaltLen = 8 -- 64 bits.
 
 --------------------------------------------------------------------------------
 -- | Generate a salt with the recommended length.
-generateSalt :: (MonadCrypto m) => m Salt
+generateSalt :: (MonadCrypto k m) => m Salt
 generateSalt = generateSalt' recommendedSaltLen
 
 --------------------------------------------------------------------------------
@@ -90,7 +90,7 @@ generateSalt = generateSalt' recommendedSaltLen
 --
 -- Attempting to generate fewer bytes than the recommended length will
 -- automatically upgrade the length to the recommended value.
-generateSalt' :: (MonadCrypto m) => Int -> m Salt
+generateSalt' :: (MonadCrypto k m) => Int -> m Salt
 generateSalt' = fmap Salt . liftCryptoOpt . generateRandom . max recommendedSaltLen
 
 --------------------------------------------------------------------------------

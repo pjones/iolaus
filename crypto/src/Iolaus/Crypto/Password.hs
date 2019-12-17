@@ -248,8 +248,7 @@ toStrongPassword cfg day (Password (Clear t) bs) =
 -- For more information see section 5.1.1.2 of the NIST Special
 -- Publication 800-63B.
 toHashedPassword
-  :: ( MonadCrypto m
-     )
+  :: (MonadCrypto k m)
   => SharedSalt      -- ^ A salt shared across an entire application.
   -> Settings        -- ^ Hashing settings.
   -> Password Strong -- ^ The strong password to hash.

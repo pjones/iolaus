@@ -46,7 +46,7 @@ run =
     ]
 
 --------------------------------------------------------------------------------
-runCrypto :: M.CryptoOpt (CryptoniteT IO) a -> IO a
+runCrypto :: M.CryptoOpt Cryptonite a -> IO a
 runCrypto opt = do
   mgr <- memoryKeys
   ct  <- initCryptoniteT mgr
@@ -54,7 +54,7 @@ runCrypto opt = do
   return x
 
 --------------------------------------------------------------------------------
-genericReversible :: M.CryptoOpt (CryptoniteT IO) (ByteString, Secret ByteString, ByteString) -> Assertion
+genericReversible :: M.CryptoOpt Cryptonite (ByteString, Secret ByteString, ByteString) -> Assertion
 genericReversible opt = do
   (msg, enc, dec) <- runCrypto opt
   (secretBytes enc /= msg) @? "encrypted value should not match original"

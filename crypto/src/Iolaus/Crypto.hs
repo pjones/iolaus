@@ -18,6 +18,7 @@ module Iolaus.Crypto (
   -- * A Monad for Cryptography
   MonadCrypto,
   Key,
+  KeyPair,
 
   -- * Core Symmetric Cryptography Operations
   generateRandom,
@@ -62,7 +63,7 @@ import Iolaus.Crypto.API
 import Iolaus.Crypto.Error (CryptoError(..), AsCryptoError(..))
 import Iolaus.Crypto.HashedSecret
 import Iolaus.Crypto.Key
-import Iolaus.Crypto.Monad (MonadCrypto(..))
+import Iolaus.Crypto.Monad (MonadCrypto(..), Key, KeyPair)
 import Iolaus.Crypto.Password
 import Iolaus.Crypto.Salt
 import Iolaus.Crypto.SaltedHash

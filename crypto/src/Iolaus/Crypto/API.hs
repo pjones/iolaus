@@ -42,77 +42,77 @@ import qualified Data.ByteString.Lazy as LByteString
 --------------------------------------------------------------------------------
 -- Package Imports:
 import Iolaus.Crypto.Key
-import Iolaus.Crypto.Monad (MonadCrypto(..))
+import Iolaus.Crypto.Monad (MonadCrypto(..), Key, KeyPair)
 import qualified Iolaus.Crypto.Monad as M
 import Iolaus.Crypto.Secret
 import Iolaus.Crypto.Signature
 
 --------------------------------------------------------------------------------
 -- | Generate random bytes.
-generateRandom :: (MonadCrypto m) => Int -> m ByteString
+generateRandom :: (MonadCrypto k m) => Int -> m ByteString
 generateRandom = liftCryptoOpt . M.generateRandom
 
 --------------------------------------------------------------------------------
 -- | Generate a new symmetric cryptography key which will be
 -- identified by the given 'Label'.
-generateKey :: (MonadCrypto m) => Cipher -> Label -> m (Key m)
+generateKey :: (MonadCrypto k m) => Cipher -> Label -> m (Key k)
 generateKey = (liftCryptoOpt .) . M.generateKey
 
 --------------------------------------------------------------------------------
 -- | Locate a previously generated symmetric cryptography key given
 -- its 'Label'.
-fetchKey :: (MonadCrypto m) => Cipher -> Label -> m (Maybe (Key m))
+fetchKey :: (MonadCrypto k m) => Cipher -> Label -> m (Maybe (Key k))
 fetchKey = (liftCryptoOpt .) . M.fetchKey
 
 --------------------------------------------------------------------------------
 -- | Symmetric encryption of any type that can be converted to 'Binary'.
-encrypt :: forall m a. (MonadCrypto m, Binary a) => Key m -> a -> m (Secret a)
+encrypt :: (MonadCrypto k m, Binary a) => Key k -> a -> m (Secret a)
 encrypt k x = liftCryptoOpt (reSec <$> M.encrypt k (toB x))
 
 --------------------------------------------------------------------------------
 -- | Symmetric decryption of any type that can be converted from 'Binary'.
-decrypt :: (MonadCrypto m, Binary a) => Key m -> Secret a -> m a
+decrypt :: (MonadCrypto k m, Binary a) => Key k -> Secret a -> m a
 decrypt k s = liftCryptoOpt (fromB <$> M.decrypt k (reSec s))
 
 --------------------------------------------------------------------------------
 -- | Generate a new asymmetric key pair (private key and public key)
 -- which will be identified by the given 'Label'.
-generateKeyPair :: (MonadCrypto m) => Algo -> Label -> m (KeyPair m)
+generateKeyPair :: (MonadCrypto k m) => Algo -> Label -> m (KeyPair k)
 generateKeyPair = (liftCryptoOpt .) . M.generateKeyPair
 
 --------------------------------------------------------------------------------
 -- | Locate an existing key pair given its 'Label'.
-fetchKeyPair :: (MonadCrypto m) => Algo -> Label -> m (Maybe (KeyPair m))
+fetchKeyPair :: (MonadCrypto k m) => Algo -> Label -> m (Maybe (KeyPair k))
 fetchKeyPair = (liftCryptoOpt .) . M.fetchKeyPair
 
 --------------------------------------------------------------------------------
 -- | Extract the public key from a 'KeyPair'.
-toPublicKey :: (MonadCrypto m) => KeyPair m -> m PublicKey
+toPublicKey :: (MonadCrypto k m) => KeyPair k -> m PublicKey
 toPublicKey = liftCryptoOpt . M.toPublicKey
 
 --------------------------------------------------------------------------------
 -- | Asymmetric encryption of any type that can be converted to
 -- 'Binary'.
-asymmetricEncrypt :: (MonadCrypto m, Binary a) => Label -> PublicKey -> a -> m (Secret a)
+asymmetricEncrypt :: (MonadCrypto k m, Binary a) => Label -> PublicKey -> a -> m (Secret a)
 asymmetricEncrypt l k x = liftCryptoOpt (reSec <$> M.asymmetricEncrypt l k (toB x))
 
 --------------------------------------------------------------------------------
 -- | Asymmetric decryption of any type that can be converted from
 -- 'Binary'.  Decryption is done using the private key component of
 -- the 'KeyPair'.
-asymmetricDecrypt :: (MonadCrypto m, Binary a) => KeyPair m -> Secret a -> m a
+asymmetricDecrypt :: (MonadCrypto k m, Binary a) => KeyPair k -> Secret a -> m a
 asymmetricDecrypt k s = liftCryptoOpt (fromB <$> M.asymmetricDecrypt k (reSec s))
 
 --------------------------------------------------------------------------------
 -- | The value to be signed is converted to 'Binary', hashed using a
 -- hashing algorithm, and then the hashed value is encrypted with the
 -- private key component of the 'KeyPair'.
-asymmetricSign :: (MonadCrypto m, Binary a) => KeyPair m -> Hash -> a -> m (Signature a)
+asymmetricSign :: (MonadCrypto k m, Binary a) => KeyPair k -> Hash -> a -> m (Signature a)
 asymmetricSign k h x = liftCryptoOpt (reSig <$> M.asymmetricSign k h (toB x))
 
 --------------------------------------------------------------------------------
 -- | Verify a signature.
-verifySignature :: (MonadCrypto m, Binary a) => PublicKey -> Signature a -> a -> m SigStatus
+verifySignature :: (MonadCrypto k m, Binary a) => PublicKey -> Signature a -> a -> m SigStatus
 verifySignature k s x = liftCryptoOpt (M.verifySignature k (reSig s) (toB x))
 
 --------------------------------------------------------------------------------
