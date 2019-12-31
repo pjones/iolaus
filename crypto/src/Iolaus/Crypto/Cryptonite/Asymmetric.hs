@@ -26,6 +26,8 @@ module Iolaus.Crypto.Cryptonite.Asymmetric
   ( AsymmetricKey
   , toKey
   , fromKey
+  , toX509PrivKey
+  , fromX509PrivKey
   , generateKeyPair
   , toPublicKey
   , encrypt
@@ -40,6 +42,7 @@ import Control.Monad.Error.Lens (throwing)
 import Control.Monad.Except
 import qualified Crypto.Hash.Algorithms as C
 import qualified Crypto.PubKey.RSA as RSA
+import qualified Crypto.PubKey.RSA.Types as RSA (private_size)
 import qualified Crypto.PubKey.RSA.PKCS15 as RSA
 import Crypto.Random (MonadRandom(..))
 import Data.Binary (Binary)
@@ -49,6 +52,7 @@ import qualified Data.ByteString as ByteString
 import Data.ByteString.Builder (Builder)
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.X509 as X509
 import GHC.Generics (Generic)
 
 --------------------------------------------------------------------------------
@@ -151,6 +155,20 @@ toKey algo label bs = do
 -- | Serialize a key to a 'ByteString'.
 fromKey :: AsymmetricKey -> ByteString
 fromKey = LBS.toStrict . Binary.encode
+
+--------------------------------------------------------------------------------
+toX509PrivKey :: AsymmetricKey -> X509.PrivKey
+toX509PrivKey = \case
+  AKRSA _ k -> X509.PrivKeyRSA (toRSAPrivateKey k)
+
+--------------------------------------------------------------------------------
+fromX509PrivKey :: X509.PrivKey -> Maybe AsymmetricKey
+fromX509PrivKey = \case
+  X509.PrivKeyRSA k
+    | RSA.private_size k == 256  -> Just (AKRSA RSA2048 (fromRSAPrivateKey k))
+    | RSA.private_size k == 512  -> Just (AKRSA RSA4096 (fromRSAPrivateKey k))
+    | otherwise -> Nothing
+  _ -> Nothing
 
 --------------------------------------------------------------------------------
 -- | Asymmetric key generation.

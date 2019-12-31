@@ -1,10 +1,10 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE DeriveAnyClass  #-}
-{-# LANGUAGE DeriveGeneric   #-}
-{-# LANGUAGE GADTs           #-}
-{-# LANGUAGE LambdaCase      #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeFamilies    #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE GADTs             #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies      #-}
 
 {-|
 
@@ -28,13 +28,15 @@ module Iolaus.Crypto.Key
   ( Cipher(..)
   , Algo(..)
   , Hash(..)
+  , toX509HashAlg
+  , toX509SigAlg
   , decodeKey
   , PublicKey(..)
+  , toX509PubKey
   , encodePublicKey
   , decodePublicKey
   , Label(..)
   , toLabel
-  , getLabelText
   , KeyManager(..)
   , GetStatus(..)
   , PutStatus(..)
@@ -43,34 +45,35 @@ module Iolaus.Crypto.Key
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import qualified Data.ByteArray.Encoding as Base
-import Control.Applicative ((<|>), empty)
+import Control.Concurrent.QSem
+import Control.Exception (bracket_)
 import Control.Exception.Safe (tryIO)
+import Control.Monad ((<=<))
+import qualified Crypto.Hash as SHA1
+import Crypto.Hash.Algorithms (SHA1)
 import qualified Crypto.PubKey.RSA as RSA
-import Data.ASN1.BinaryEncoding (DER(..))
-import qualified Data.ASN1.Encoding as ASN1
-import Data.ASN1.Types (ASN1)
-import qualified Data.ASN1.Types as ASN1
 import Data.Aeson (ToJSON, FromJSON)
-import Data.Bifunctor (first)
 import Data.Binary (Binary)
 import qualified Data.Binary as Binary
+import qualified Data.ByteArray as Memory
+import qualified Data.ByteArray.Encoding as Base
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as ByteString
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.PEM as PEM
+import Data.Maybe (listToMaybe)
 import Data.Text (Text)
-import Data.Text.Encoding (decodeUtf8)
 import qualified Data.X509 as X509
 import GHC.Generics (Generic)
 import System.Directory (doesPathExist)
 import System.FilePath ((</>))
+import System.PosixCompat.Files (setFileMode)
 
 --------------------------------------------------------------------------------
 -- Package Imports:
 import qualified Iolaus.Crypto.Encoding as Encoding
 import Iolaus.Crypto.Error
+import Iolaus.Crypto.PEM
 
 --------------------------------------------------------------------------------
 -- | The public key portion of a key pair.
@@ -84,55 +87,31 @@ newtype PublicKey = RSAPubKey (Algo, RSA.PublicKey)
   deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
+-- | Convert a 'PublicKey' to one that can be used in X509
+-- certificates.
+toX509PubKey :: PublicKey -> X509.PubKey
+toX509PubKey (RSAPubKey (_, k)) = X509.PubKeyRSA k
+
+--------------------------------------------------------------------------------
+-- | Convert a 'X509.PubKey' to a 'PublicKey'.
+fromX509PubKey :: X509.PubKey -> Maybe PublicKey
+fromX509PubKey = \case
+  X509.PubKeyRSA k@(RSA.PublicKey n _ _)
+    | n == 256  -> Just (RSAPubKey (RSA2048, k))
+    | n == 512  -> Just (RSAPubKey (RSA4096, k))
+    | otherwise -> Nothing
+  _ -> Nothing
+
+--------------------------------------------------------------------------------
 -- | Encode a public key in standard PEM format.
-encodePublicKey :: PublicKey -> ByteString
-encodePublicKey = PEM.pemWriteBS . mkPEM . forPEM . toX509
-  where
-    toX509 :: PublicKey -> X509.PubKey
-    toX509 (RSAPubKey (_, k)) = X509.PubKeyRSA k
-
-    forPEM :: X509.PubKey -> ByteString
-    forPEM = ASN1.encodeASN1' DER . ($ []) . ASN1.toASN1
-
-    mkPEM :: ByteString -> PEM.PEM
-    mkPEM = PEM.PEM "PUBLIC KEY" []
+encodePublicKey :: PublicKey -> LBS.ByteString
+encodePublicKey = encodePEM . pure . toPEM PublicKeySection . toX509PubKey
 
 --------------------------------------------------------------------------------
 -- | Decode a public key that was encoded in PEM.  The first usable
 -- key found in the PEM stream is returned.
-decodePublicKey :: ByteString -> Maybe PublicKey
-decodePublicKey bs = do
-    pems <- toM (PEM.pemParseBS bs)
-    foldl (\a b -> a <|> fromPEM b) empty pems
-
-  where
-    fromPEM :: PEM.PEM -> Maybe PublicKey
-    fromPEM pem = do
-      as <- toM (ASN1.decodeASN1' DER (PEM.pemContent pem))
-      foldl (\a b -> a <|> fromX509 b) empty (toX509 as)
-
-    toX509 :: [ASN1] -> [X509.PubKey]
-    toX509 as = go ([], as)
-      where
-        un :: Either String (a, [ASN1]) -> ([a], [ASN1])
-        un (Left _) = ([], [])
-        un (Right (x, xs)) = ([x], xs)
-
-        go :: ([X509.PubKey], [ASN1]) -> [X509.PubKey]
-        go (xs, []) = xs
-        go (xs, ys) = go (first (xs ++) (un (ASN1.fromASN1 ys)))
-
-    fromX509 :: X509.PubKey -> Maybe PublicKey
-    fromX509 = \case
-      X509.PubKeyRSA k@(RSA.PublicKey n _ _)
-        | n == 256  -> Just (RSAPubKey (RSA2048, k))
-        | n == 512  -> Just (RSAPubKey (RSA4096, k))
-        | otherwise -> Nothing
-      _ -> Nothing
-
-    toM :: Either l r -> Maybe r
-    toM (Left _)  = Nothing
-    toM (Right x) = Just x
+decodePublicKey :: LBS.ByteString -> Maybe PublicKey
+decodePublicKey = (fromX509PubKey <=< listToMaybe) . concatMap fromPEM . decodePEM
 
 --------------------------------------------------------------------------------
 -- | A label is a way to identify a key by a name.
@@ -144,25 +123,23 @@ decodePublicKey bs = do
 -- name.
 --
 -- To ensure the label is safe to use in hardware devices and as file
--- names the underlying text is normalized and then base32 encoded.
-newtype Label = Label
-  { getLabel  :: CBS.ByteString -- ^ Access the encoded label.
+-- names the underlying text is normalized, hashed, and then base32
+-- encoded.
+data Label = Label
+  { getLabel     :: CBS.ByteString -- ^ Access the encoded label.
+  , getLabelText :: Text           -- ^ The inverse of 'toLabel'.
   } deriving (Eq, Ord, Show)
 
 --------------------------------------------------------------------------------
 -- | Create a label from a 'Text' value.
 toLabel :: Text -> Label
-toLabel = Label . Base.convertToBase Base.Base32 . Encoding.normalize
-
---------------------------------------------------------------------------------
--- | The inverse of 'toLabel'.
-getLabelText :: Label -> Text
-getLabelText Label{..} =
-    decodeUtf8 . check . Base.convertFromBase Base.Base32 $ getLabel
+toLabel t = Label (encode t) t
   where
-    check :: Either l ByteString -> ByteString
-    check (Left _)   = getLabel -- Should never happen.
-    check (Right bs) = bs
+    encode =
+      Base.convertToBase Base.Base32 .
+      (Memory.convert :: SHA1.Digest SHA1 -> ByteString) .
+      (SHA1.hash :: ByteString -> SHA1.Digest SHA1) .
+      Encoding.normalize
 
 --------------------------------------------------------------------------------
 -- | Supported symmetric ciphers.
@@ -188,6 +165,23 @@ data Hash
   | SHA2_384 -- ^ https://en.wikipedia.org/wiki/Secure_Hash_Algorithms
   | SHA2_512 -- ^ https://en.wikipedia.org/wiki/Secure_Hash_Algorithms
   deriving (Generic, Eq, Ord, Show, Binary, ToJSON, FromJSON)
+
+--------------------------------------------------------------------------------
+-- | Convert a 'Hash' value to a X509 'X509.HashALG'.
+toX509HashAlg :: Hash -> X509.HashALG
+toX509HashAlg = \case
+  SHA2_256 -> X509.HashSHA256
+  SHA2_384 -> X509.HashSHA384
+  SHA2_512 -> X509.HashSHA512
+
+--------------------------------------------------------------------------------
+-- | Convert a 'Hash' and 'Algo' to a X509 'X509.SignatureALG'.
+toX509SigAlg :: Hash -> Algo -> X509.SignatureALG
+toX509SigAlg hash = \case
+    RSA2048 -> rsa
+    RSA4096 -> rsa
+  where
+    rsa = X509.SignatureALG (toX509HashAlg hash) X509.PubKeyALG_RSA
 
 --------------------------------------------------------------------------------
 decodeKey :: (Binary a) => Label -> ByteString -> Either CryptoError a
@@ -226,10 +220,19 @@ data KeyManager = KeyManager
 -- the file system.
 fileManager
   :: FilePath   -- ^ The directory where keys will be stored.
-  -> KeyManager
-fileManager dir = KeyManager get put
+  -> IO KeyManager
+fileManager dir = do
+    sem <- newQSem 1
+
+    return KeyManager
+      { managerGetKey =  limit sem    . get
+      , managerPutKey = (limit sem .) . put
+      }
 
   where
+    limit :: QSem -> IO a -> IO a
+    limit sem = bracket_ (waitQSem sem) (signalQSem sem)
+
     get :: Label -> IO GetStatus
     get label = do
       r <- tryIO (ByteString.readFile (path label))
@@ -237,13 +240,14 @@ fileManager dir = KeyManager get put
 
     put :: Label -> ByteString -> IO PutStatus
     put label bs = do
-      let file = path label
+      let file  = path label
+          write = do ByteString.writeFile file "\n"
+                     setFileMode file 0o600
+                     ByteString.writeFile file bs
       exists <- doesPathExist file
       if exists
         then return PutKeyExists
-        else do
-          r <- tryIO (ByteString.writeFile (path label) bs)
-          return (either (const PutFailed) (const PutSucceeded) r)
+        else either (const PutFailed) (const PutSucceeded) <$> tryIO write
 
     path :: Label -> FilePath
-    path (Label file) = dir </> CBS.unpack file
+    path (Label file _) = dir </> CBS.unpack file

@@ -48,7 +48,10 @@ module Iolaus.Crypto (
   Secret, secretBytes, secretMAC, secretLabel,
   Signature(..), SigStatus(..),
   Label, toLabel, getLabel, getLabelText,
+
+  -- * Public and Private Keys
   PublicKey, encodePublicKey, decodePublicKey,
+  CanPrivateKey(..),
 
   Cipher(..),
   Algo(..),
@@ -63,7 +66,7 @@ import Iolaus.Crypto.API
 import Iolaus.Crypto.Error (CryptoError(..), AsCryptoError(..))
 import Iolaus.Crypto.HashedSecret
 import Iolaus.Crypto.Key
-import Iolaus.Crypto.Monad (MonadCrypto(..), Key, KeyPair)
+import Iolaus.Crypto.Monad (MonadCrypto(..), Key, KeyPair, CanPrivateKey(..))
 import Iolaus.Crypto.Password
 import Iolaus.Crypto.Salt
 import Iolaus.Crypto.SaltedHash

@@ -54,7 +54,9 @@ module Iolaus.Crypto.Monad (
   asymmetricEncrypt,
   asymmetricDecrypt,
   asymmetricSign,
-  verifySignature
+  verifySignature,
+
+  CanPrivateKey(..)
   ) where
 
 --------------------------------------------------------------------------------
@@ -62,11 +64,13 @@ module Iolaus.Crypto.Monad (
 import Control.Monad.Free.Church (MonadFree(..), F, liftF)
 import Control.Monad.Free.TH (makeFree)
 import Data.ByteString (ByteString)
+import qualified Data.ByteString.Lazy as LBS
+
 import Control.Monad.Except
 import Control.Monad.State
-import Control.Monad.Reader
-import Control.Monad.Identity
 import Control.Monad.Cont
+import Control.Monad.Identity
+import Control.Monad.Reader
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -93,6 +97,17 @@ class (Monad m) => MonadCrypto k (m :: * -> *) | m -> k where
   -- | The primary method of a cryptographic monad, evaluate a crypto
   -- operation.
   liftCryptoOpt :: CryptoOpt k a -> m a
+
+--------------------------------------------------------------------------------
+-- | A variant of 'MonadCrypto' that can expose private keys.  This
+-- can only be implemented for software-based cryptography as hardware
+-- devices typically don't allow access to the private key.
+class (MonadCrypto k m) => CanPrivateKey k (m :: * -> *) | m -> k where
+  -- | Expose the private key as PEM-encoded data.
+  encodePrivateKey :: KeyPair k -> m LBS.ByteString
+
+  -- | Attempt to decode a PEM-encoded private key.
+  decodePrivateKey :: LBS.ByteString -> m (Maybe (KeyPair k))
 
 --------------------------------------------------------------------------------
 instance (MonadCrypto k m) => MonadCrypto k (ExceptT e m) where

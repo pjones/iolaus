@@ -69,6 +69,6 @@ app = do
 main :: IO ()
 main = do
   -- We're going to store keys on the file system in the current directory.
-  crypto <- initCryptoniteT (fileManager ".")
-  _ <- runCryptoniteT crypto (runApp app)
-  return ()
+  manager <- fileManager "."
+  crypto <- initCryptoniteT manager
+  runCryptoniteT crypto (runApp app) >>= print

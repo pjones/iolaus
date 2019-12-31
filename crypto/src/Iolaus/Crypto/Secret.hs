@@ -28,7 +28,6 @@ module Iolaus.Crypto.Secret
 import Data.Aeson (ToJSON(..), FromJSON(..), (.:), (.:?), (.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as CBS
 import Data.Profunctor.Product.Default (Default(def))
 import Data.Text (Text)
 
@@ -49,7 +48,7 @@ import Opaleye
 --------------------------------------------------------------------------------
 -- Package Imports:
 import Iolaus.Crypto.Encoding as Encoding
-import Iolaus.Crypto.Key (Label(..))
+import Iolaus.Crypto.Key (Label(..), toLabel)
 
 --------------------------------------------------------------------------------
 -- | A value of type @a@ that has been encrypted.
@@ -64,14 +63,14 @@ instance ToJSON (Secret a) where
   toJSON s = Aeson.object
     [ "data" .= Encoding.encode (Encoding (secretBytes s))
     , "mac"  .= fmap (Encoding.encode . Encoding) (secretMAC s)
-    , "key"  .= CBS.unpack (getLabel (secretLabel s))
+    , "key"  .= getLabelText (secretLabel s)
     ]
 
 instance FromJSON (Secret a) where
   parseJSON = Aeson.withObject "Secret" $ \v ->
     Secret <$> fmap Encoding.getBytes (Encoding.decodeM =<< (v .: "data"))
            <*> (decodeMaybe =<< (v .:? "mac"))
-           <*> fmap (Label . CBS.pack) (v .: "key")
+           <*> fmap toLabel (v .: "key")
 
     where
       decodeMaybe :: Monad m => Maybe Text -> m (Maybe ByteString)

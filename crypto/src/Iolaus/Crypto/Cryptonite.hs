@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeFamilies               #-}
 
@@ -40,6 +41,7 @@ import Control.Monad.Reader
 import Crypto.Random (MonadRandom(..), DRG(..), ChaChaDRG, drgNew)
 import Data.ByteString (ByteString)
 import Data.IORef
+import Data.Maybe (listToMaybe)
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -48,6 +50,7 @@ import Iolaus.Crypto.Cryptonite.Asymmetric as Asymmetric
 import Iolaus.Crypto.Cryptonite.Symmetric as Symmetric
 import Iolaus.Crypto.Error
 import Iolaus.Crypto.Monad
+import Iolaus.Crypto.PEM
 
 --------------------------------------------------------------------------------
 data Config = Config
@@ -87,6 +90,15 @@ instance (MonadIO m) => MonadRandom (CryptoniteT m) where
 --------------------------------------------------------------------------------
 instance (MonadIO m) => MonadCrypto Cryptonite (CryptoniteT m) where
   liftCryptoOpt = evalCrypto
+
+--------------------------------------------------------------------------------
+instance (MonadIO m) => CanPrivateKey Cryptonite (CryptoniteT m) where
+  encodePrivateKey (CryptoniteKeyPair _ k) = return $
+    encodePEM [toPEM PrivateKeySection (Asymmetric.toX509PrivKey k)]
+
+  decodePrivateKey = return . fmap (CryptoniteKeyPair (toLabel "None")) .
+    (Asymmetric.fromX509PrivKey <=< listToMaybe) .
+    concatMap fromPEM . decodePEM
 
 --------------------------------------------------------------------------------
 evalCrypto

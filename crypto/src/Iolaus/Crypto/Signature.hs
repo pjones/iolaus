@@ -20,6 +20,7 @@ License: BSD-2-Clause
 module Iolaus.Crypto.Signature
   ( Signature(..)
   , SigStatus(..)
+  , sigToX509
   ) where
 
 --------------------------------------------------------------------------------
@@ -27,6 +28,7 @@ module Iolaus.Crypto.Signature
 import Data.Aeson (ToJSON(..), FromJSON(..), (.:), (.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
+import qualified Data.X509 as X509
 
 --------------------------------------------------------------------------------
 -- Package Imports:
@@ -67,3 +69,8 @@ instance FromJSON (Signature a) where
     Signature <$> fmap Encoding.getBytes (Encoding.decodeM =<< (v .: "data"))
               <*> v .: "algo"
               <*> v .: "hash"
+
+--------------------------------------------------------------------------------
+-- | Convert a 'Signature' to the tuple expected by the X509 package.
+sigToX509 :: Signature a -> (ByteString, X509.SignatureALG)
+sigToX509 Signature{..} = (sigBytes, toX509SigAlg sigHash sigAlgo)

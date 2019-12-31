@@ -32,6 +32,7 @@ import Control.Monad.Error.Lens (throwing)
 import Control.Monad.Except (MonadError)
 import qualified Crypto.Error as CE
 import Data.Bifunctor (first)
+import qualified Data.ASN1.Error as ASN1
 import Data.Text (Text)
 
 --------------------------------------------------------------------------------
@@ -49,7 +50,9 @@ data CryptoError
   | KeyDoesNotExistError Text
   | KeyWriteFailure Text
   | KeyReadFailure Text
+  | PemDecodingError Text
   | WrappedCryptoError CE.CryptoError
+  | WrappedASN1Error ASN1.ASN1Error
   deriving Show
 
 makeClassyPrisms ''CryptoError
