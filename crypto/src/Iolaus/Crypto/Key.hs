@@ -30,7 +30,7 @@ module Iolaus.Crypto.Key
   , Hash(..)
   , toX509HashAlg
   , toX509SigAlg
-  , decodeKey
+  , decodeBinaryKey
   , PublicKey(..)
   , toX509PubKey
   , encodePublicKey
@@ -128,7 +128,7 @@ decodePublicKey = (fromX509PubKey <=< listToMaybe) . concatMap fromPEM . decodeP
 data Label = Label
   { getLabel     :: CBS.ByteString -- ^ Access the encoded label.
   , getLabelText :: Text           -- ^ The inverse of 'toLabel'.
-  } deriving (Eq, Ord, Show)
+  } deriving (Generic, Eq, Ord, Binary, Show)
 
 --------------------------------------------------------------------------------
 -- | Create a label from a 'Text' value.
@@ -184,8 +184,8 @@ toX509SigAlg hash = \case
     rsa = X509.SignatureALG (toX509HashAlg hash) X509.PubKeyALG_RSA
 
 --------------------------------------------------------------------------------
-decodeKey :: (Binary a) => Label -> ByteString -> Either CryptoError a
-decodeKey label bs =
+decodeBinaryKey :: (Binary a) => Label -> ByteString -> Either CryptoError a
+decodeBinaryKey label bs =
   case Binary.decodeOrFail (LBS.fromStrict bs) of
     Left _ -> Left (KeyReadFailure (getLabelText label))
     Right (bs', _, k)

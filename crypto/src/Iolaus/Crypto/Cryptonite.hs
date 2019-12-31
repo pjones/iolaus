@@ -39,6 +39,7 @@ import Control.Monad.Free.Church (runF)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader
 import Crypto.Random (MonadRandom(..), DRG(..), ChaChaDRG, drgNew)
+import qualified Data.Binary as Binary
 import Data.ByteString (ByteString)
 import Data.IORef
 import Data.Maybe (listToMaybe)
@@ -92,7 +93,13 @@ instance (MonadIO m) => MonadCrypto Cryptonite (CryptoniteT m) where
   liftCryptoOpt = evalCrypto
 
 --------------------------------------------------------------------------------
-instance (MonadIO m) => CanPrivateKey Cryptonite (CryptoniteT m) where
+instance (MonadIO m) => HasKeyAccess Cryptonite (CryptoniteT m) where
+  encodeKey (CryptoniteKey l k) = return (Binary.encode (l, k))
+
+  decodeKey bs = case Binary.decodeOrFail bs of
+    Left _ -> return Nothing
+    Right (_, _, (l, k)) -> return (Just (CryptoniteKey l k))
+
   encodePrivateKey (CryptoniteKeyPair _ k) = return $
     encodePEM [toPEM PrivateKeySection (Asymmetric.toX509PrivKey k)]
 

@@ -68,7 +68,7 @@ import Iolaus.Crypto.Key
 import Iolaus.Crypto.Signature
 import Iolaus.Crypto.API
 import Iolaus.Crypto.PEM
-import Iolaus.Crypto.Monad (MonadCrypto(..), KeyPair, CanPrivateKey(..))
+import Iolaus.Crypto.Monad (MonadCrypto(..), KeyPair, HasKeyAccess(..))
 import qualified Iolaus.Crypto.Monad as M
 import Iolaus.Crypto.PKI.Monad
 
@@ -177,7 +177,7 @@ certForCA plen =
 newLeafCert
   :: ( MonadCrypto k m
      , MonadCertAuth m
-     , CanPrivateKey k m
+     , HasKeyAccess k m
      )
   => Text
      -- ^ Common name for the subject field.

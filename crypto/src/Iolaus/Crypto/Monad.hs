@@ -56,7 +56,7 @@ module Iolaus.Crypto.Monad (
   asymmetricSign,
   verifySignature,
 
-  CanPrivateKey(..)
+  HasKeyAccess(..)
   ) where
 
 --------------------------------------------------------------------------------
@@ -99,10 +99,16 @@ class (Monad m) => MonadCrypto k (m :: * -> *) | m -> k where
   liftCryptoOpt :: CryptoOpt k a -> m a
 
 --------------------------------------------------------------------------------
--- | A variant of 'MonadCrypto' that can expose private keys.  This
--- can only be implemented for software-based cryptography as hardware
--- devices typically don't allow access to the private key.
-class (MonadCrypto k m) => CanPrivateKey k (m :: * -> *) | m -> k where
+-- | A variant of 'MonadCrypto' that can expose keys.  This can only
+-- be implemented for software-based cryptography as hardware devices
+-- typically don't allow access to the raw key data.
+class (MonadCrypto k m) => HasKeyAccess k (m :: * -> *) | m -> k where
+  -- | Expose a symmetric key as binary data.
+  encodeKey :: Key k -> m LBS.ByteString
+
+  -- | Attempt to decode a symmetric key from binary data.
+  decodeKey :: LBS.ByteString -> m (Maybe (Key k))
+
   -- | Expose the private key as PEM-encoded data.
   encodePrivateKey :: KeyPair k -> m LBS.ByteString
 

@@ -146,7 +146,7 @@ instance AsyAlgo AsymmetricKey where
 -- | Recreate a key from a 'ByteString'.
 toKey :: Algo -> Label -> ByteString -> Either CryptoError AsymmetricKey
 toKey algo label bs = do
-  key <- decodeKey label bs
+  key <- decodeBinaryKey label bs
   assert (getAlgo key == algo) (AlgoMismatchError (getLabelText label))
   assert (keySizeBytes algo == keySizeBytes key) InvalidKeyLength
   return key
