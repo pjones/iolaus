@@ -26,7 +26,6 @@ module Iolaus.Crypto.PKI.Monad
   ( CaOpt
   , CaOptF(..)
   , MonadCertAuth(..)
-  , nextSerialNumber
   , fetchHashAndAlgo
   , fetchRootCert
   , fetchIntermediateCert
@@ -71,10 +70,7 @@ instance (MonadCertAuth m) => MonadCertAuth (ContT r m) where
 --------------------------------------------------------------------------------
 -- | Operations performed by a Certificate Authority.
 data CaOptF f
-  = NextSerialNumber (Integer -> f)
-    -- ^ Must generate a new, unique number for each call.
-
-  | FetchHashAndAlgo ((Hash, Algo) -> f)
+  = FetchHashAndAlgo ((Hash, Algo) -> f)
     -- ^ Yield the hashing and asymmetric encryption algorithms that
     -- should be used.
 
