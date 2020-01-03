@@ -38,6 +38,7 @@ module Iolaus.Crypto.Monad (
 
   -- * Key Management for Software Crypto
   KeyManager(..),
+  FileExtension(..),
   GetStatus(..),
   PutStatus(..),
 

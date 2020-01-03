@@ -118,11 +118,11 @@ evalCrypto opt = runF opt return $ \case
 
   GenerateKey cipher label next -> do
     key <- Symmetric.generateKey cipher
-    putKey label (Symmetric.fromKey key)
+    putKey label KeyExt (Symmetric.fromKey key)
     next (CryptoniteKey label key)
 
   FetchKey cipher label next ->
-    getKey label >>= \case
+    getKey label KeyExt >>= \case
       Nothing -> next Nothing
       Just bs -> do
         key <- liftCryptoError (Symmetric.toKey cipher label bs)
@@ -136,11 +136,11 @@ evalCrypto opt = runF opt return $ \case
 
   GenerateKeyPair algo label next -> do
     key <- Asymmetric.generateKeyPair algo
-    putKey label (Asymmetric.fromKey key)
+    putKey label PrivateExt (Asymmetric.fromKey key)
     next (CryptoniteKeyPair label key)
 
   FetchKeyPair algo label next ->
-    getKey label >>= \case
+    getKey label PrivateExt >>= \case
       Nothing -> next Nothing
       Just bs -> do
         key <- liftCryptoError (Asymmetric.toKey algo label bs)
@@ -162,18 +162,18 @@ evalCrypto opt = runF opt return $ \case
     Asymmetric.verify pub sig bs >>= next
 
   where
-    putKey :: Label -> ByteString -> CryptoniteT m ()
-    putKey label bs = do
+    putKey :: Label -> FileExtension -> ByteString -> CryptoniteT m ()
+    putKey label ext bs = do
       mgr <- asks envMgr
-      liftIO (managerPutKey mgr label bs) >>= \case
+      liftIO (managerPutKey mgr label ext bs) >>= \case
         PutSucceeded -> return ()
         PutKeyExists -> throwError (KeyExistsError (getLabelText label))
         PutFailed    -> throwError (KeyWriteFailure (getLabelText label))
 
-    getKey :: Label -> CryptoniteT m (Maybe ByteString)
-    getKey label = do
+    getKey :: Label -> FileExtension -> CryptoniteT m (Maybe ByteString)
+    getKey label ext = do
       mgr <- asks envMgr
-      liftIO (managerGetKey mgr label) >>= \case
+      liftIO (managerGetKey mgr label ext) >>= \case
         GetFailed -> return Nothing
         GetSucceeded bs -> return (Just bs)
 

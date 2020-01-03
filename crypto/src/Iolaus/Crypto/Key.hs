@@ -38,6 +38,7 @@ module Iolaus.Crypto.Key
   , Label(..)
   , toLabel
   , KeyManager(..)
+  , FileExtension(..)
   , GetStatus(..)
   , PutStatus(..)
   , fileManager
@@ -63,6 +64,7 @@ import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Maybe (listToMaybe)
 import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Data.X509 as X509
 import GHC.Generics (Generic)
 import System.Directory (doesPathExist)
@@ -206,12 +208,35 @@ data PutStatus
   | PutFailed     -- ^ Failed to store the key.
 
 --------------------------------------------------------------------------------
+-- | Allow for duplicate keys in a 'KeyManager' by using file
+-- extensions.  For example, this allows private and public keys with
+-- the same 'Label' to be stored next to one another in the file
+-- system.
+data FileExtension
+  = KeyExt                      -- ^ Symmetric key.
+  | PrivateExt                  -- ^ Asymmetric private key.
+  | PublicExt                   -- ^ Asymmetric public key.
+  | CertExt                     -- ^ Certificate.
+  | OtherExt Text               -- ^ Some other extension (without the dot)
+  deriving (Eq, Ord, Show)
+
+--------------------------------------------------------------------------------
+-- | Convert a 'FileExtension' into a 'FilePath' (adds the leading dot).
+fileExtension :: FileExtension -> FilePath
+fileExtension = \case
+  KeyExt     -> ".key"
+  PrivateExt -> ".prv"
+  PublicExt  -> ".pub"
+  CertExt    -> ".crt"
+  OtherExt x -> "." <> Text.unpack x
+
+--------------------------------------------------------------------------------
 -- | Used by the 'CryptoniteT' backend to store and retrieve keys.
 data KeyManager = KeyManager
-  { managerGetKey :: Label -> IO GetStatus
+  { managerGetKey :: Label -> FileExtension -> IO GetStatus
     -- ^ A function that can fetch keys on demand.
 
-  , managerPutKey :: Label -> ByteString -> IO PutStatus
+  , managerPutKey :: Label -> FileExtension -> ByteString -> IO PutStatus
     -- ^ A function that can store keys on demand.
   }
 
@@ -225,22 +250,22 @@ fileManager dir = do
     sem <- newQSem 1
 
     return KeyManager
-      { managerGetKey =  limit sem    . get
-      , managerPutKey = (limit sem .) . put
+      { managerGetKey =  (limit sem .)    . get
+      , managerPutKey = ((limit sem .) .) . put
       }
 
   where
     limit :: QSem -> IO a -> IO a
     limit sem = bracket_ (waitQSem sem) (signalQSem sem)
 
-    get :: Label -> IO GetStatus
-    get label = do
-      r <- tryIO (ByteString.readFile (path label))
+    get :: Label -> FileExtension -> IO GetStatus
+    get label ext = do
+      r <- tryIO (ByteString.readFile (path label ext))
       return (either (const GetFailed) GetSucceeded r)
 
-    put :: Label -> ByteString -> IO PutStatus
-    put label bs = do
-      let file  = path label
+    put :: Label -> FileExtension -> ByteString -> IO PutStatus
+    put label ext bs = do
+      let file  = path label ext
           write = do ByteString.writeFile file "\n"
                      setFileMode file 0o600
                      ByteString.writeFile file bs
@@ -249,5 +274,5 @@ fileManager dir = do
         then return PutKeyExists
         else either (const PutFailed) (const PutSucceeded) <$> tryIO write
 
-    path :: Label -> FilePath
-    path (Label file _) = dir </> CBS.unpack file
+    path :: Label -> FileExtension -> FilePath
+    path (Label file _) ext = dir </> CBS.unpack file <> fileExtension ext

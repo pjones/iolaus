@@ -30,6 +30,9 @@ import Iolaus.Crypto
 import Iolaus.Crypto.Monad
 
 --------------------------------------------------------------------------------
+type Table = Map (Label, FileExtension) ByteString
+
+--------------------------------------------------------------------------------
 -- | A 'KeyManager' that keeps keys in a map.  For testing only.
 memoryKeys :: (MonadIO m) => m KeyManager
 memoryKeys = do
@@ -37,16 +40,17 @@ memoryKeys = do
     return (KeyManager (get ref) (put ref))
 
   where
-    get :: IORef (Map Label ByteString) -> Label -> IO GetStatus
-    get ref label = do
+    get :: IORef Table -> Label -> FileExtension -> IO GetStatus
+    get ref label ext = do
       table <- readIORef ref
-      case Map.lookup label table of
+      case Map.lookup (label, ext) table of
         Nothing -> return GetFailed
         Just bs -> return (GetSucceeded bs)
 
-    put :: IORef (Map Label ByteString) -> Label -> ByteString -> IO PutStatus
-    put ref label bs = do
+    put :: IORef Table -> Label -> FileExtension -> ByteString -> IO PutStatus
+    put ref label ext bs = do
+      let ent = (label, ext)
       table <- readIORef ref
-      if Map.member label table
+      if Map.member ent table
         then return PutKeyExists
-        else atomicModifyIORef ref (\t -> (Map.insert label bs t,  PutSucceeded))
+        else atomicModifyIORef ref (\t -> (Map.insert ent bs t,  PutSucceeded))
