@@ -67,11 +67,12 @@ import Control.Monad.Free.TH (makeFree)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LBS
 
-import Control.Monad.Except
-import Control.Monad.State
 import Control.Monad.Cont
+import Control.Monad.Except
 import Control.Monad.Identity
 import Control.Monad.Reader
+import Control.Monad.State.Lazy
+import qualified Control.Monad.State.Strict as SState
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -120,6 +121,8 @@ class (MonadCrypto k m) => HasKeyAccess k (m :: * -> *) | m -> k where
 instance (MonadCrypto k m) => MonadCrypto k (ExceptT e m) where
   liftCryptoOpt = lift . liftCryptoOpt
 instance (MonadCrypto k m) => MonadCrypto k (StateT s m) where
+  liftCryptoOpt = lift . liftCryptoOpt
+instance (MonadCrypto k m) => MonadCrypto k (SState.StateT s m) where
   liftCryptoOpt = lift . liftCryptoOpt
 instance (MonadCrypto k m) => MonadCrypto k (ReaderT r m) where
   liftCryptoOpt = lift . liftCryptoOpt

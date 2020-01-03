@@ -40,11 +40,12 @@ import Data.X509 (Certificate, SignedCertificate)
 
 --------------------------------------------------------------------------------
 -- Imports for MTL Instances:
-import Control.Monad.Except
-import Control.Monad.State
-import Control.Monad.Reader
-import Control.Monad.Identity
 import Control.Monad.Cont
+import Control.Monad.Except
+import Control.Monad.Identity
+import Control.Monad.Reader
+import Control.Monad.State.Lazy
+import qualified Control.Monad.State.Strict as SState
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -59,6 +60,8 @@ class (Monad m) => MonadCertAuth m where
 instance (MonadCertAuth m) => MonadCertAuth (ExceptT e m) where
   liftCaOpt = lift . liftCaOpt
 instance (MonadCertAuth m) => MonadCertAuth (StateT s m) where
+  liftCaOpt = lift . liftCaOpt
+instance (MonadCertAuth m) => MonadCertAuth (SState.StateT s m) where
   liftCaOpt = lift . liftCaOpt
 instance (MonadCertAuth m) => MonadCertAuth (ReaderT r m) where
   liftCaOpt = lift . liftCaOpt
