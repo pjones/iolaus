@@ -133,11 +133,11 @@ instance (MonadCrypto k m) => MonadCrypto k (ContT r m) where
 data CryptoOptF (k :: *) f
   = GenerateRandom Int (ByteString -> f)
   | GenerateKey Cipher Label (Key k -> f)
-  | FetchKey Cipher Label (Maybe (Key k) -> f)
+  | FetchKey Label (Maybe (Key k) -> f)
   | Encrypt (Key k) ByteString (Secret ByteString -> f)
   | Decrypt (Key k) (Secret ByteString) (ByteString -> f)
   | GenerateKeyPair Algo Label (KeyPair k -> f)
-  | FetchKeyPair Algo Label (Maybe (KeyPair k) -> f)
+  | FetchKeyPair Label (Maybe (KeyPair k) -> f)
   | ToPublicKey (KeyPair k) (PublicKey -> f)
   | AsymmetricEncrypt Label PublicKey ByteString (Secret ByteString -> f)
   | AsymmetricDecrypt (KeyPair k) (Secret ByteString) (ByteString -> f)

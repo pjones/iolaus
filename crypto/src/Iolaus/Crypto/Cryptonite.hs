@@ -121,11 +121,11 @@ evalCrypto opt = runF opt return $ \case
     putKey label KeyExt (Symmetric.fromKey key)
     next (CryptoniteKey label key)
 
-  FetchKey cipher label next ->
+  FetchKey label next ->
     getKey label KeyExt >>= \case
       Nothing -> next Nothing
       Just bs -> do
-        key <- liftCryptoError (Symmetric.toKey cipher label bs)
+        key <- liftCryptoError (Symmetric.toKey label bs)
         next (Just (CryptoniteKey label key))
 
   Encrypt (CryptoniteKey label key) value next ->
@@ -139,11 +139,11 @@ evalCrypto opt = runF opt return $ \case
     putKey label PrivateExt (Asymmetric.fromKey key)
     next (CryptoniteKeyPair label key)
 
-  FetchKeyPair algo label next ->
+  FetchKeyPair label next ->
     getKey label PrivateExt >>= \case
       Nothing -> next Nothing
       Just bs -> do
-        key <- liftCryptoError (Asymmetric.toKey algo label bs)
+        key <- liftCryptoError (Asymmetric.toKey label bs)
         next (Just (CryptoniteKeyPair label key))
 
   ToPublicKey (CryptoniteKeyPair _ key) next ->

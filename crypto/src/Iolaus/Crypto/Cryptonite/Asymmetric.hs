@@ -71,11 +71,7 @@ class AsyAlgo a where
   chunkSize :: a -> Int
   chunkSize a = keySizeBytes a - 11
 
-  -- | Extract the algorithm type.
-  getAlgo :: a -> Algo
-
 instance AsyAlgo Algo where
-  getAlgo = id
   keySizeBytes = \case
     RSA2048 -> 256
     RSA4096 -> 512
@@ -139,17 +135,11 @@ data AsymmetricKey
 instance AsyAlgo AsymmetricKey where
   keySizeBytes = \case
     AKRSA algo _ -> keySizeBytes algo
-  getAlgo = \case
-    AKRSA algo _ -> algo
 
 --------------------------------------------------------------------------------
 -- | Recreate a key from a 'ByteString'.
-toKey :: Algo -> Label -> ByteString -> Either CryptoError AsymmetricKey
-toKey algo label bs = do
-  key <- decodeBinaryKey label bs
-  assert (getAlgo key == algo) (AlgoMismatchError (getLabelText label))
-  assert (keySizeBytes algo == keySizeBytes key) InvalidKeyLength
-  return key
+toKey :: Label -> ByteString -> Either CryptoError AsymmetricKey
+toKey = decodeBinaryKey
 
 --------------------------------------------------------------------------------
 -- | Serialize a key to a 'ByteString'.

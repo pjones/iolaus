@@ -123,11 +123,10 @@ generateKey c = SymmetricKey c <$> getRandomBytes (keySize c)
 
 --------------------------------------------------------------------------------
 -- | Recreate a key from a 'ByteString'.
-toKey :: Cipher -> Label -> ByteString -> Either CryptoError SymmetricKey
-toKey cipher label bs = do
+toKey :: Label -> ByteString -> Either CryptoError SymmetricKey
+toKey label bs = do
   key <- decodeBinaryKey label bs
   assert (ByteString.length (keybs key) == keySize (keyc key)) InvalidKeyLength
-  assert (cipher == keyc key) (CipherMismatchError (getLabelText label))
   return key
 
 --------------------------------------------------------------------------------

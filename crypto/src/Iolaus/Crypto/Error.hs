@@ -44,8 +44,6 @@ data CryptoError
   | MalformedSignatureTextError
   | MissingAuthTagError
   | AuthTagMismatchError
-  | CipherMismatchError Text
-  | AlgoMismatchError Text
   | KeyExistsError Text
   | KeyDoesNotExistError Text
   | KeyWriteFailure Text

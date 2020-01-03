@@ -61,8 +61,8 @@ generateKey = (liftCryptoOpt .) . M.generateKey
 --------------------------------------------------------------------------------
 -- | Locate a previously generated symmetric cryptography key given
 -- its 'Label'.
-fetchKey :: (MonadCrypto k m) => Cipher -> Label -> m (Maybe (Key k))
-fetchKey = (liftCryptoOpt .) . M.fetchKey
+fetchKey :: (MonadCrypto k m) => Label -> m (Maybe (Key k))
+fetchKey = liftCryptoOpt . M.fetchKey
 
 --------------------------------------------------------------------------------
 -- | Symmetric encryption of any type that can be converted to 'Binary'.
@@ -82,8 +82,8 @@ generateKeyPair = (liftCryptoOpt .) . M.generateKeyPair
 
 --------------------------------------------------------------------------------
 -- | Locate an existing key pair given its 'Label'.
-fetchKeyPair :: (MonadCrypto k m) => Algo -> Label -> m (Maybe (KeyPair k))
-fetchKeyPair = (liftCryptoOpt .) . M.fetchKeyPair
+fetchKeyPair :: (MonadCrypto k m) => Label -> m (Maybe (KeyPair k))
+fetchKeyPair = liftCryptoOpt . M.fetchKeyPair
 
 --------------------------------------------------------------------------------
 -- | Extract the public key from a 'KeyPair'.

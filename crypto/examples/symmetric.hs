@@ -57,7 +57,7 @@ app = do
       cipher = AES256
       number = 42 :: Int
 
-  keyM <- fetchKey cipher label
+  keyM <- fetchKey label
   key  <- maybe (generateKey cipher label) return keyM
 
   liftIO (putStrLn ("key file is: " <> ByteString.unpack (getLabel label)))
