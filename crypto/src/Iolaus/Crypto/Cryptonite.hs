@@ -1,10 +1,13 @@
 {-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE UndecidableInstances       #-}
 
 {-|
 
@@ -25,7 +28,6 @@ License: BSD-2-Clause
 module Iolaus.Crypto.Cryptonite
   ( CryptoniteT
   , Cryptonite
-  , Config
   , fileManager
   , initCryptoniteT
   , runCryptoniteT
@@ -34,15 +36,23 @@ module Iolaus.Crypto.Cryptonite
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import Control.Monad.Except
+import Control.Lens (view)
+import Control.Lens.TH (makeClassy)
+import Control.Monad.Error.Lens (throwing)
 import Control.Monad.Free.Church (runF)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Reader
 import Crypto.Random (MonadRandom(..), DRG(..), ChaChaDRG, drgNew)
 import qualified Data.Binary as Binary
 import Data.ByteString (ByteString)
 import Data.IORef
 import Data.Maybe (listToMaybe)
+
+--------------------------------------------------------------------------------
+-- For MTL Instances:
+import Control.Monad.Cont
+import Control.Monad.Except
+import Control.Monad.Reader
+import Control.Monad.State.Class
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -54,39 +64,67 @@ import Iolaus.Crypto.Monad
 import Iolaus.Crypto.PEM
 
 --------------------------------------------------------------------------------
-data Config = Config
-  { envRG  :: IORef ChaChaDRG
-  , envMgr :: KeyManager
-  }
+-- | Save me some typing.
+type RNG = IORef ChaChaDRG
 
 --------------------------------------------------------------------------------
--- | An implementation of 'MonadCrypto' via the Cryptonite library.
-newtype CryptoniteT m a = CryptoniteT
-  { unC :: ExceptT CryptoError (ReaderT Config m) a }
+data Cryptonite = Cryptonite
+  { _envRG  :: RNG
+  , _envMgr :: KeyManager
+  }
+
+makeClassy ''Cryptonite
+
+--------------------------------------------------------------------------------
+-- | An internal transformer for random bytes.
+newtype RandomT m a = RandomT
+  { unR :: ReaderT RNG m a }
   deriving ( Functor
            , Applicative
            , Monad
-           , MonadError CryptoError
-           , MonadReader Config
            , MonadIO
+           , MonadTrans
+           , MonadError e
+           , MonadState s
+           , MonadCont
            )
 
---------------------------------------------------------------------------------
--- | Type used to index cryptographic operations and keys.
-data Cryptonite
+runRandomT :: RNG -> RandomT m a -> m a
+runRandomT env = (`runReaderT` env) . unR
 
 --------------------------------------------------------------------------------
-data instance Key Cryptonite = CryptoniteKey Label SymmetricKey
-data instance KeyPair Cryptonite = CryptoniteKeyPair Label AsymmetricKey
+instance (MonadReader r m) => MonadReader r (RandomT m) where
+  ask   = lift ask
+  reader = lift . reader
+  local f m = do
+    env <- RandomT (ask :: ReaderT RNG m RNG)
+    lift (local f (runRandomT env m))
 
 --------------------------------------------------------------------------------
-instance (MonadIO m) => MonadRandom (CryptoniteT m) where
+instance (MonadIO m) => MonadRandom (RandomT m) where
   getRandomBytes n = do
-    slot <- asks envRG
+    slot <- RandomT ask
     gen  <- liftIO (readIORef slot)
     let (bytes, gen') = randomBytesGenerate n gen
     liftIO (writeIORef slot gen')
     return bytes
+
+--------------------------------------------------------------------------------
+-- | An implementation of 'MonadCrypto' via the Cryptonite library.
+newtype CryptoniteT m a = CryptoniteT
+  { unC :: RandomT (ExceptT CryptoError (ReaderT Cryptonite m)) a }
+  deriving ( Functor
+           , Applicative
+           , Monad
+           , MonadIO
+           , MonadRandom
+           , MonadState s
+           , MonadCont
+           )
+
+--------------------------------------------------------------------------------
+data instance Key Cryptonite = CryptoniteKey Label SymmetricKey
+data instance KeyPair Cryptonite = CryptoniteKeyPair Label AsymmetricKey
 
 --------------------------------------------------------------------------------
 instance (MonadIO m) => MonadCrypto Cryptonite (CryptoniteT m) where
@@ -108,11 +146,32 @@ instance (MonadIO m) => HasKeyAccess Cryptonite (CryptoniteT m) where
     concatMap fromPEM . decodePEM
 
 --------------------------------------------------------------------------------
+instance MonadTrans CryptoniteT where
+  lift = CryptoniteT . lift . lift . lift
+
+--------------------------------------------------------------------------------
+instance (MonadError e m, AsCryptoError e) => MonadError e (CryptoniteT m) where
+   throwError = lift . throwError
+   catchError m f = do
+     env <- CryptoniteT ask
+     lift (catchError (runCryptoniteT' env m) (runCryptoniteT' env . f))
+
+--------------------------------------------------------------------------------
+instance (MonadReader r m) => MonadReader r (CryptoniteT m) where
+  ask   = lift ask
+  reader = lift . reader
+  local f m = do
+    env <- CryptoniteT (ask :: RandomT (ExceptT CryptoError (ReaderT Cryptonite m)) Cryptonite)
+    lift (local f (runCryptoniteT env m)) >>= \case
+      Left e  -> CryptoniteT (throwError e)
+      Right a -> return a
+
+--------------------------------------------------------------------------------
 evalCrypto
-  :: forall m a. (MonadIO m)
+  :: ( MonadIO m )
   => CryptoOpt Cryptonite a
   -> CryptoniteT m a
-evalCrypto opt = runF opt return $ \case
+evalCrypto opt = CryptoniteT . runF opt return $ \case
   GenerateRandom n next ->
     getRandomBytes n >>= next
 
@@ -161,39 +220,58 @@ evalCrypto opt = runF opt return $ \case
   VerifySignature pub sig bs next ->
     Asymmetric.verify pub sig bs >>= next
 
-  where
-    putKey :: Label -> FileExtension -> ByteString -> CryptoniteT m ()
-    putKey label ext bs = do
-      mgr <- asks envMgr
-      liftIO (managerPutKey mgr label ext bs) >>= \case
-        PutSucceeded -> return ()
-        PutKeyExists -> throwError (KeyExistsError (getLabelText label))
-        PutFailed    -> throwError (KeyWriteFailure (getLabelText label))
+--------------------------------------------------------------------------------
+putKey
+  :: ( MonadIO m
+     , MonadReader r m
+     , MonadError e m
+     , AsCryptoError e
+     , HasCryptonite r
+     )
+  => Label
+  -> FileExtension
+  -> ByteString
+  -> m ()
+putKey label ext bs = do
+  mgr <- view envMgr
+  liftIO (managerPutKey mgr label ext bs) >>= \case
+    PutSucceeded -> return ()
+    PutKeyExists -> throwing _KeyExistsError (getLabelText label)
+    PutFailed    -> throwing _KeyWriteFailure (getLabelText label)
 
-    getKey :: Label -> FileExtension -> CryptoniteT m (Maybe ByteString)
-    getKey label ext = do
-      mgr <- asks envMgr
-      liftIO (managerGetKey mgr label ext) >>= \case
-        GetFailed -> return Nothing
-        GetSucceeded bs -> return (Just bs)
+--------------------------------------------------------------------------------
+getKey
+  :: ( MonadIO m
+     , MonadReader r m
+     , HasCryptonite r
+     )
+  => Label
+  -> FileExtension
+  -> m (Maybe ByteString)
+getKey label ext = do
+  mgr <- view envMgr
+  liftIO (managerGetKey mgr label ext) >>= \case
+    GetFailed -> return Nothing
+    GetSucceeded bs -> return (Just bs)
 
 --------------------------------------------------------------------------------
 -- | Create a configuration value needed to run cryptographic operations.
 initCryptoniteT
   :: (MonadIO m)
   => KeyManager
-  -> m Config
+  -> m Cryptonite
 initCryptoniteT mgr =
-  Config <$> liftIO (drgNew >>= newIORef)
-         <*> pure mgr
+  Cryptonite <$> liftIO (drgNew >>= newIORef)
+             <*> pure mgr
 
 --------------------------------------------------------------------------------
 -- | Run all cryptographic operations and return their result.
 runCryptoniteT
-  :: Config
+  :: Cryptonite
   -> CryptoniteT m a
   -> m (Either CryptoError a)
-runCryptoniteT config = (`runReaderT` config) . runExceptT . unC
+runCryptoniteT config =
+  (`runReaderT` config) . runExceptT . runRandomT (view envRG config) . unC
 
 --------------------------------------------------------------------------------
 -- | A variant of 'runCryptoniteT' that uses 'MonadError' instead of 'Either'.
@@ -201,7 +279,7 @@ runCryptoniteT'
   :: ( MonadError e m
      , AsCryptoError e
      )
-  => Config
+  => Cryptonite
   -> CryptoniteT m a
   -> m a
 runCryptoniteT' c = runCryptoniteT c >=> liftCryptoError
