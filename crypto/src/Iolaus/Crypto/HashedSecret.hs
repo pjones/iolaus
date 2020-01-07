@@ -1,7 +1,8 @@
-{-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RecordWildCards       #-}
 
 {-|
 
@@ -26,7 +27,7 @@ module Iolaus.Crypto.HashedSecret
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import Data.Aeson (ToJSON(..), FromJSON(..))
+import Data.Aeson (ToJSON(..), FromJSON(..), (.:), (.=))
 import qualified Data.Aeson as Aeson
 import Data.Binary (Binary)
 import Data.Profunctor.Product.Default (Default(..))
@@ -45,7 +46,7 @@ import Opaleye
 --------------------------------------------------------------------------------
 -- Project Imports:
 import Iolaus.Crypto.API
-import Iolaus.Crypto.Monad(MonadCrypto, Key)
+import Iolaus.Crypto.Monad (MonadCrypto, Key)
 import Iolaus.Crypto.Salt
 import Iolaus.Crypto.SaltedHash
 import Iolaus.Crypto.Secret
@@ -58,7 +59,20 @@ import Iolaus.Crypto.Secret
 data HashedSecret a = HashedSecret
   { hashedSecret    :: SaltedHash a
   , encryptedSecret :: Secret a
-  } deriving (Generic, ToJSON, FromJSON)
+  } deriving (Generic)
+
+--------------------------------------------------------------------------------
+instance ToJSON (HashedSecret a) where
+  toJSON HashedSecret{..} = Aeson.object
+    [ "hashed"    .= hashedSecret
+    , "encrypted" .= encryptedSecret
+    ]
+
+--------------------------------------------------------------------------------
+instance FromJSON (HashedSecret a) where
+  parseJSON = Aeson.withObject "HashedSecret" $ \v ->
+    HashedSecret <$> v .: "hashed"
+                 <*> v .: "encrypted"
 
 --------------------------------------------------------------------------------
 instance FromField (HashedSecret a) where
