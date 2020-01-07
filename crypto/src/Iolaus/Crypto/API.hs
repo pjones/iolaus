@@ -34,6 +34,8 @@ module Iolaus.Crypto.API
 
 --------------------------------------------------------------------------------
 -- Library Imports:
+import Control.Monad.Error.Lens (throwing)
+import Control.Monad.Except (MonadError)
 import Data.Binary (Binary)
 import qualified Data.Binary as Binary
 import Data.ByteString (ByteString)
@@ -41,6 +43,7 @@ import qualified Data.ByteString.Lazy as LByteString
 
 --------------------------------------------------------------------------------
 -- Package Imports:
+import Iolaus.Crypto.Error
 import Iolaus.Crypto.Key
 import Iolaus.Crypto.Monad (MonadCrypto(..), Key, KeyPair)
 import qualified Iolaus.Crypto.Monad as M
@@ -71,8 +74,21 @@ encrypt k x = liftCryptoOpt (reSec <$> M.encrypt k (toB x))
 
 --------------------------------------------------------------------------------
 -- | Symmetric decryption of any type that can be converted from 'Binary'.
-decrypt :: (MonadCrypto k m, Binary a) => Key k -> Secret a -> m a
-decrypt k s = liftCryptoOpt (fromB <$> M.decrypt k (reSec s))
+--
+-- If the value you are decrypting fails to deserialize from 'Binary'
+-- an error will be thrown.  This usually indicates that you used the
+-- wrong encryption key but could also indicate that the 'Secret' data
+-- is corrupt.
+decrypt
+  :: ( MonadCrypto k m
+     , MonadError  e m
+     , AsCryptoError e
+     , Binary a
+     )
+  => Key k
+  -> Secret a
+  -> m a
+decrypt k s = fromB =<< liftCryptoOpt (M.decrypt k (reSec s))
 
 --------------------------------------------------------------------------------
 -- | Generate a new asymmetric key pair (private key and public key)
@@ -100,8 +116,21 @@ asymmetricEncrypt l k x = liftCryptoOpt (reSec <$> M.asymmetricEncrypt l k (toB 
 -- | Asymmetric decryption of any type that can be converted from
 -- 'Binary'.  Decryption is done using the private key component of
 -- the 'KeyPair'.
-asymmetricDecrypt :: (MonadCrypto k m, Binary a) => KeyPair k -> Secret a -> m a
-asymmetricDecrypt k s = liftCryptoOpt (fromB <$> M.asymmetricDecrypt k (reSec s))
+--
+-- If the value you are decrypting fails to deserialize from 'Binary'
+-- an error will be thrown.  This usually indicates that you used the
+-- wrong encryption key but could also indicate that the 'Secret' data
+-- is corrupt.
+asymmetricDecrypt
+  :: ( MonadCrypto k m
+     , MonadError  e m
+     , AsCryptoError e
+     , Binary a
+     )
+  => KeyPair k
+  -> Secret a
+  -> m a
+asymmetricDecrypt k s = fromB =<< liftCryptoOpt (M.asymmetricDecrypt k (reSec s))
 
 --------------------------------------------------------------------------------
 -- | The value to be signed is converted to 'Binary', hashed using a
@@ -120,8 +149,13 @@ verifySignature k s x = liftCryptoOpt (M.verifySignature k (reSig s) (toB x))
 toB :: (Binary a) => a -> ByteString
 toB = LByteString.toStrict . Binary.encode
 
-fromB :: (Binary a) => ByteString -> a
-fromB = Binary.decode . LByteString.fromStrict
+fromB :: (Binary a, MonadError e m, AsCryptoError e) => ByteString -> m a
+fromB bs =
+  case Binary.decodeOrFail (LByteString.fromStrict bs) of
+    Left _ -> throwing _MalformedCipherTextError ()
+    Right (bs', _, k)
+      | LByteString.null bs' -> return k
+      | otherwise -> throwing _MalformedCipherTextError ()
 
 reSec :: Secret a -> Secret b
 reSec Secret{..} = Secret{..}

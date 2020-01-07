@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 {-|
@@ -22,10 +23,11 @@ module Iolaus.Test.Crypto.Cryptonite (run) where
 
 --------------------------------------------------------------------------------
 -- Library Imports:
+import Control.Monad.Except
 import qualified Data.Aeson as Aeson
+import Data.ByteString (ByteString)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit
-import Data.ByteString (ByteString)
 
 --------------------------------------------------------------------------------
 -- Package Imports:
@@ -43,15 +45,21 @@ run =
     , testCase "asymmetric reversible" testAReversible
     , testCase "asymmetric signatures" testSig
     , testCase "asymmetric public keys" testPubKey
+    , testCase "multiple keys" testMultipleKeys
     ]
 
 --------------------------------------------------------------------------------
 runCrypto :: M.CryptoOpt Cryptonite a -> IO a
-runCrypto opt = do
+runCrypto = check <=< runCrypto' . M.liftCryptoOpt
+  where check (Left e)  = assertFailure (show e)
+        check (Right a) = return a
+
+--------------------------------------------------------------------------------
+runCrypto' :: CryptoniteT (ExceptT CryptoError IO) a -> IO (Either CryptoError a)
+runCrypto' m = do
   mgr <- memoryKeys
   ct  <- initCryptoniteT mgr
-  Right x <- runCryptoniteT ct (M.liftCryptoOpt opt)
-  return x
+  runExceptT (runCryptoniteT' ct m)
 
 --------------------------------------------------------------------------------
 genericReversible :: M.CryptoOpt Cryptonite (ByteString, Secret ByteString, ByteString) -> Assertion
@@ -101,3 +109,25 @@ testSig = do
     M.verifySignature pub s msg
 
   status @?= SignatureVerified
+
+--------------------------------------------------------------------------------
+testMultipleKeys :: Assertion
+testMultipleKeys = do
+  let value = 42 :: Int
+
+  Right (a, b) <- runCrypto' $ do
+    keyA <- generateKey AES256 (toLabel "Key A")
+    keyB <- generateKey AES256 (toLabel "Key B")
+
+    encA <- encrypt keyA value
+    decA <- decrypt keyA encA
+
+    -- Should fail to decode from Binary:
+    decB <- catchError
+              (decrypt keyB encA >> return (value + 1))
+              (const (return value))
+
+    return (decA, decB)
+
+  a @?= value
+  b @?= value

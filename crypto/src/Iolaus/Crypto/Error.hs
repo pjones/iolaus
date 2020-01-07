@@ -40,7 +40,7 @@ import Data.Text (Text)
 data CryptoError
   = InvalidKeyLength
   | InvalidSaltLength
-  | MalformedCipherTextError
+  | MalformedCipherTextError -- ^ Malformed cipher text or the wrong key was used.
   | MalformedSignatureTextError
   | MissingAuthTagError
   | AuthTagMismatchError
