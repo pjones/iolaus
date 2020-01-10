@@ -87,14 +87,10 @@ import Iolaus.Crypto.Signature
 -- extensions added to it before passing it to the 'signCert'
 -- function.
 newCert
-  :: ( MonadCrypto k m )
-  => UUID
+  :: UUID
      -- ^ The serial number to use.
   -> Text
      -- ^ Common name of the subject.
-  -> Label
-     -- ^ The label for the asymmetric key pair that needs to be
-     -- generated.
   -> Algo
      -- ^ The asymmetric algorithm to use.
   -> Hash
@@ -103,16 +99,15 @@ newCert
      -- ^ Issuer ('Nothing' means to self-issue).
   -> (UTCTime, UTCTime)
      -- ^ Time range for validity.
-  -> m (KeyPair k, Certificate)
-     -- ^ Generated 'KeyPair' and 'Certificate'.
-newCert sn cn label algo hash issuer (start, end) = do
-  key <- generateKeyPair algo label
-  pub <- toPublicKey key
-
+  -> PublicKey
+     -- ^ The public key to put into the certificate.
+  -> Certificate
+     -- ^ The new, unsigned certificate.
+newCert sn cn algo hash issuer (start, end) =
   let subjectDN    = makeCN cn
       dnFromIssuer = certSubjectDN . signedObject . X509.getSigned
 
-      cert = Certificate
+      cert pub = Certificate
         { certVersion      = 3
         , certSerial       = toSerialNumber sn
         , certSignatureAlg = toX509SigAlg hash algo
@@ -123,7 +118,7 @@ newCert sn cn label algo hash issuer (start, end) = do
         , certExtensions   = X509.Extensions Nothing
         }
 
-  return (key, cert)
+  in cert
 
 --------------------------------------------------------------------------------
 -- | Sign a certificate.
@@ -243,21 +238,22 @@ newLeafCert
   -> UUID
      -- ^ Used to create the certificate's serial number and the label
      -- for the 'KeyPair'.
+  -> Label
+     -- ^ The label to use for the generated 'KeyPair'
   -> (UTCTime, UTCTime)
      -- ^ Time range for validity.
   -> (Certificate -> Certificate)
      -- ^ Function to fine-tune a certificate (e.g. 'certForTLS').
   -> m (KeyPair k, SignedCertificate)
      -- ^ Private key and signed certificate.
-newLeafCert name uuid validity f = do
-    issuer <- liftCaOpt fetchIntermediateCert
-    (hash, algo) <- liftCaOpt fetchHashAndAlgo
-    (key, cert) <- newCert uuid name label algo hash (Just issuer) validity
-    signed <- liftCaOpt (signWithIntermediateCert (f cert))
-    return (key, signed)
-  where
-    label :: Label
-    label = toLabel (UUID.toText uuid)
+newLeafCert name uuid label validity f = do
+  issuer <- liftCaOpt fetchIntermediateCert
+  (hash, algo) <- liftCaOpt fetchHashAndAlgo
+  key <- generateKeyPair algo label
+  pub <- toPublicKey key
+  let cert = newCert uuid name algo hash (Just issuer) validity pub
+  signed <- liftCaOpt (signWithIntermediateCert (f cert))
+  return (key, signed)
 
 --------------------------------------------------------------------------------
 -- | Encode a signed certificate in PEM format.
