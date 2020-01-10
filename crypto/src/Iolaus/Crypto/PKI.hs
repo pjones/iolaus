@@ -131,14 +131,18 @@ signCert
   :: ( MonadCrypto k m )
   => KeyPair k
      -- ^ The keys to use for signing.
-  -> Hash
-     -- ^ The hashing algorithm to use.
   -> Certificate
      -- ^ The certificate to sign.
   -> m SignedCertificate
      -- ^ The signed certificate.
-signCert key hash = X509.objectToSignedExactF
-  (fmap sigToX509 . liftCryptoOpt . M.asymmetricSign key hash)
+signCert key cert =
+    X509.objectToSignedExactF
+      (fmap sigToX509 . liftCryptoOpt . M.asymmetricSign key hash) cert
+  where
+    hash :: Hash
+    hash = case fromX509SigAlg (certSignatureAlg cert) of
+      Nothing -> SHA2_512
+      Just (h, _) -> h
 
 --------------------------------------------------------------------------------
 -- | Certain X509 certificate extensions need to be marked as critical.

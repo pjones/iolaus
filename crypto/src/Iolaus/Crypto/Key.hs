@@ -4,6 +4,7 @@
 {-# LANGUAGE GADTs             #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 {-# LANGUAGE TypeFamilies      #-}
 
 {-|
@@ -29,7 +30,9 @@ module Iolaus.Crypto.Key
   , Algo(..)
   , Hash(..)
   , toX509HashAlg
+  , fromX509HashAlg
   , toX509SigAlg
+  , fromX509SigAlg
   , decodeBinaryKey
   , PublicKey(..)
   , toX509PubKey
@@ -177,6 +180,15 @@ toX509HashAlg = \case
   SHA2_512 -> X509.HashSHA512
 
 --------------------------------------------------------------------------------
+-- | Convert a X509 'X509.HashALG' to a 'Hash'.
+fromX509HashAlg :: X509.HashALG -> Maybe Hash
+fromX509HashAlg = \case
+  X509.HashSHA256 -> Just SHA2_256
+  X509.HashSHA384 -> Just SHA2_384
+  X509.HashSHA512 -> Just SHA2_512
+  _               -> Nothing
+
+--------------------------------------------------------------------------------
 -- | Convert a 'Hash' and 'Algo' to a X509 'X509.SignatureALG'.
 toX509SigAlg :: Hash -> Algo -> X509.SignatureALG
 toX509SigAlg hash = \case
@@ -184,6 +196,15 @@ toX509SigAlg hash = \case
     RSA4096 -> rsa
   where
     rsa = X509.SignatureALG (toX509HashAlg hash) X509.PubKeyALG_RSA
+
+--------------------------------------------------------------------------------
+-- | Convert a X509 'X509.SignatureALG' to a 'Hash' with a X509
+-- 'X509.PubKeyALG' which roughly corresponds to a 'Algo'.
+fromX509SigAlg :: X509.SignatureALG -> Maybe (Hash, X509.PubKeyALG)
+fromX509SigAlg = \case
+  X509.SignatureALG hash X509.PubKeyALG_RSA ->
+    (,X509.PubKeyALG_RSA) <$> fromX509HashAlg hash
+  _ -> Nothing
 
 --------------------------------------------------------------------------------
 decodeBinaryKey :: (Binary a) => Label -> ByteString -> Either CryptoError a
