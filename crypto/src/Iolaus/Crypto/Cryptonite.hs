@@ -53,6 +53,7 @@ import Control.Monad.Cont
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State.Class
+import Iolaus.Database (MonadDB(..))
 
 --------------------------------------------------------------------------------
 -- Project Imports:
@@ -165,6 +166,10 @@ instance (MonadReader r m) => MonadReader r (CryptoniteT m) where
     lift (local f (runCryptoniteT env m)) >>= \case
       Left e  -> CryptoniteT (throwError e)
       Right a -> return a
+
+--------------------------------------------------------------------------------
+instance (MonadDB m) => MonadDB (CryptoniteT m) where
+  liftQuery = lift . liftQuery
 
 --------------------------------------------------------------------------------
 evalCrypto
