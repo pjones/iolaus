@@ -25,17 +25,14 @@ module Main (main) where
 
 --------------------------------------------------------------------------------
 -- Imports:
-import Control.Lens.TH (makeClassy, makeClassyPrisms)
-import Control.Monad.Except (ExceptT, MonadError, runExceptT)
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Reader (ReaderT, MonadReader, runReaderT)
+import Control.Carrier.Lift
+import Control.Carrier.Database
+import Control.Carrier.Throw.Either
+import Data.Function ((&))
 import Data.Profunctor.Product.TH (makeAdaptorAndInstance)
 import Data.Text (Text)
 import qualified Data.Text as Text
-import GHC.Generics (Generic)
-import qualified Iolaus.Database as DB
 import Opaleye (Table, Field, table, tableField, selectTable)
-import qualified Opaleye as O
 import qualified Opaleye.Constant as C
 import Opaleye.SqlTypes (SqlText)
 import System.Environment (getEnv)
@@ -48,67 +45,11 @@ import qualified System.Metrics as Metrics
 import Paths_iolaus_opaleye (getDataDir)
 
 --------------------------------------------------------------------------------
--- | Custom errors for this application.
-data AppError = GenericError Text
-              | DatabaseError DB.DBError
-              deriving Show
-
-makeClassyPrisms ''AppError
-
--- Our custom error type needs to hold database errors and this is how
--- Iolaus can find them.  The @AsError@ class is created by the lens
--- library.
-instance DB.AsDBError AppError where
-  _DBError = _DatabaseError
-
-
---------------------------------------------------------------------------------
--- | A custom reader environment for this application.
-data AppEnv = AppEnv
-  { _db        :: DB.Database -- ^ The Database run time.
-  , _something :: Text        -- ^ Example value.
-  }
-
-makeClassy ''AppEnv
-
--- Iolaus needs to know how to get the 'Opaleye' environment out of
--- our application's reader environment.  This instance will tell it
--- how to do that.
-instance DB.HasDatabase AppEnv where
-  database = db
-
---------------------------------------------------------------------------------
--- | A custom transformer stack for your application:
---
--- Note: You don't need to make your custom monad an instance of
--- @MonadIO@.  If fact, in most cases you probably don't want to do
--- that.
---
--- If you don't make your monad an instance of @MonadIO@ then the
--- instance for @MonadOpaleye@ needs to lift the @runQuery@ function
--- into the inner monad (which is @MonadIO@) to work.
---
--- We'll use @MonadIO@ here to make this code simpler.
-newtype App a = App
-  { unApp :: ExceptT AppError (ReaderT AppEnv IO) a }
-  deriving ( Functor
-           , Applicative
-           , Monad
-           , MonadReader AppEnv
-           , MonadError AppError
-           , MonadIO
-           )
-
--- Define how queries are lifted into your application:
-instance DB.MonadDB App where
-  liftQuery = DB.liftQueryIO
-
---------------------------------------------------------------------------------
 -- | Database table type.  Standard Opaleye stuff.
 data Person' name = Person
   { firstName :: name
   , lastName  :: name
-  } deriving (Generic, Show)
+  } deriving Show
 
 $(makeAdaptorAndInstance "pPerson" ''Person')
 
@@ -120,23 +61,35 @@ people = table "people" (pPerson
 
 --------------------------------------------------------------------------------
 -- | Insert a new person into the database.
-createNewPerson :: (DB.MonadDB m) => Text -> Text -> m ()
+createNewPerson :: (Has Database sig m, Has (Throw DbError) sig m)
+                => Text -> Text -> m ()
 createNewPerson fn ln = do
-
   let p = Person (C.constant fn) (C.constant ln)
-  _ <- DB.liftQuery (DB.insert $ O.Insert people [p] O.rCount Nothing)
+  _ <- runQuery (insert (Insert people [p] rCount Nothing))
   pure ()
 
 --------------------------------------------------------------------------------
 -- | Example running a database SELECT from within our app's
 -- transformer stack.
-fetchEveryone :: (DB.MonadDB m) => m [Person' Text]
-fetchEveryone = DB.liftQuery (DB.select $ selectTable people)
+fetchEveryone :: (Has Database sig m, Has (Throw DbError) sig m)
+              => m [Person' Text]
+fetchEveryone = runQuery (select (selectTable people))
 
 --------------------------------------------------------------------------------
--- | Unwind the transformer stack and get back to IO.
-runApp :: AppEnv -> App a -> IO (Either AppError a)
-runApp env = flip runReaderT env . runExceptT . unApp
+app :: ( Has Database sig m
+       , Has (Throw DbError) sig m
+       , Has (Lift IO) sig m
+       )
+    => m ()
+app = do
+  schemaDir <- (</> "example" </> "schema") <$> sendM getDataDir
+  migrate schemaDir MigrateVerbosely >>= sendM . print
+
+  fn <- Text.pack <$> sendM (putStr "Enter your given/first name: "   >> getLine)
+  ln <- Text.pack <$> sendM (putStr "And now your family/last name: " >> getLine)
+
+  createNewPerson fn ln
+  fetchEveryone >>= mapM_ (sendM . print)
 
 --------------------------------------------------------------------------------
 main :: IO ()
@@ -154,24 +107,15 @@ main = do
   -- need to tell Cabal where the source directory is so it can find
   -- the schema files.  Set the @iolaus_opaleye_datadir@ environment
   -- variable to the directory containing the @example@ directory.
-  config <- DB.defaultConfig . Text.pack <$> getEnv "DB_CONN"
-  opaleye <- DB.initDatabase config (Just store)
+  config <- defaultConfig . Text.pack <$> getEnv "DB_CONN"
+  runtime <- initRuntime config (Just store)
 
-  -- Makes the name prompting in createNewPerson nicer.
+  -- Makes the name prompting in 'app' nicer.
   hSetBuffering stdout NoBuffering
 
-  -- Run an action in our transformer stack.  It will migrate the
-  -- database then do some database work.
-  result <- runApp (AppEnv opaleye "Something") $ do
-    schemaDir <- (</> "example" </> "schema") <$> liftIO getDataDir
-    DB.migrate schemaDir True
-
-    fn <- Text.pack <$> liftIO (putStr "Enter your given/first name: "   >> getLine)
-    ln <- Text.pack <$> liftIO (putStr "And now your family/last name: " >> getLine)
-
-    createNewPerson fn ln
-    fetchEveryone >>= mapM_ (liftIO . print)
+  -- Run the app by discharging all of the effects.
+  result <- app & runDatabase runtime & runThrow & runM
 
   -- Print out the result (which should be @Right ()@) and the EKG store:
-  print result
+  print (result :: Either DbError ())
   print =<< Metrics.sampleAll store

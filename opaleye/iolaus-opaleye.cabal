@@ -9,7 +9,7 @@ license:             BSD-2-Clause
 license-file:        LICENSE
 author:              Peter Jones <pjones@devalot.com>
 maintainer:          Peter Jones <pjones@devalot.com>
-copyright:           Copyright (c) 2019 Peter Jones
+copyright:           Copyright (c) 2019-2020 Peter Jones
 category:            Application
 -- bug-reports:
 
@@ -34,16 +34,39 @@ common options
                -Wmissing-export-lists
                -Wredundant-constraints
 
+  default-extensions: ConstraintKinds
+                      DataKinds
+                      DeriveFunctor
+                      DeriveGeneric
+                      DerivingVia
+                      DisambiguateRecordFields
+                      DuplicateRecordFields
+                      ExistentialQuantification
+                      FlexibleContexts
+                      FlexibleInstances
+                      LambdaCase
+                      MultiParamTypeClasses
+                      MultiWayIf
+                      NamedFieldPuns
+                      OverloadedStrings
+                      RankNTypes
+                      RecordWildCards
+                      ScopedTypeVariables
+                      StandaloneDeriving
+                      TupleSections
+                      TypeFamilies
+                      TypeOperators
+
 --------------------------------------------------------------------------------
 common dependencies
   build-depends: base                        >= 4.9   && < 5.0
                , aeson                       >= 1.3   && < 1.5
-               , dhall                       >= 1.19  && < 2.0
                , ekg-core                    >= 0.1   && < 0.2
                , exceptions                  >= 0.10  && < 0.11
                , filepath                    >= 1.4   && < 1.5
-               , lens                        >= 4.0   && < 5.0
-               , mtl                         >= 2.2   && < 2.3
+               , fused-effects               >= 1.0   && < 1.1
+               , microlens                   >= 0.4   && < 0.5
+               , microlens-th                >= 0.4   && < 0.5
                , opaleye                     >= 0.6   && < 0.7
                , postgresql-simple           >= 0.5   && < 0.7
                , postgresql-simple-migration >= 0.1   && < 0.2
@@ -52,20 +75,27 @@ common dependencies
                , retry                       >= 0.7   && < 0.9
                , template-haskell            >= 2.14  && < 2.15
                , text                        >= 1.2   && < 1.3
-               , transformers                >= 0.5   && < 0.6
 
 --------------------------------------------------------------------------------
 library
   import: options, dependencies
   hs-source-dirs: src
   exposed-modules:
+    Control.Carrier.Database
+    Control.Effect.Database
     Iolaus.Database
     Iolaus.Database.JSON
+    Iolaus.Database.Migrate
     Iolaus.Database.Newtype
-
+    Iolaus.Database.Query
   other-modules:
+    Control.Carrier.Database.Internal
+    Control.Effect.Database.Internal
     Iolaus.Database.Config
     Iolaus.Database.Error
+    Iolaus.Database.Query.Internal
+    Iolaus.Database.Runtime
+    Iolaus.Database.Transaction
 
 --------------------------------------------------------------------------------
 executable example

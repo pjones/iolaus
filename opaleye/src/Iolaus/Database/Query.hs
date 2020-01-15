@@ -13,41 +13,28 @@ Copyright:
 
 License: BSD-2-Clause
 
-For more details, including a tutorial, please see the @example.hs@
-file that is part of this distribution.
+Types and functions for querying a database with "Opaleye".
 
 -}
-module Iolaus.Database
-  (
-
-    -- * Queries
-    Query
+module Iolaus.Database.Query
+  ( Query
   , select
   , select1
   , insert
   , update
   , delete
 
-    -- * Configuration
-  , Config(..)
-  , defaultConfig
-  , Runtime
-  , initRuntime
-
-    -- * Errors
-  , DbError(..)
-
     -- * Re-exports
   , module Opaleye
+  , module Opaleye.Operators
+  , module Opaleye.Order
   ) where
 
 --------------------------------------------------------------------------------
-import Iolaus.Database.Error
-import Iolaus.Database.Config
-import Iolaus.Database.Query
-import Iolaus.Database.Runtime (Runtime, initRuntime)
+import Iolaus.Database.Query.Internal
+import Opaleye.Operators
+import Opaleye.Order
 
---------------------------------------------------------------------------------
 import Opaleye
   ( Select
   , SelectArr
@@ -56,4 +43,7 @@ import Opaleye
   , Delete(..)
   , rCount
   , rReturning
+  , FromFields
+  , toFields
+  , selectTable
   )

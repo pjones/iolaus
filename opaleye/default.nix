@@ -11,4 +11,8 @@ let
 
 in nix-hs {
   cabal = ./iolaus-opaleye.cabal;
+
+  overrides = lib: self: super:
+    (import ../nix/overrides.nix lib self super) // (with lib; {
+    });
 }

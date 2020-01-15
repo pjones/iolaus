@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell       #-}
-
 {-|
 
 Copyright:
@@ -17,27 +15,23 @@ License: BSD-2-Clause
 
 -}
 module Iolaus.Database.Error
-  ( DBError(..)
-  , AsDBError(..)
+  ( DbError(..)
   ) where
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import Control.Lens
-import Data.Text (Text)
 import qualified Database.PostgreSQL.Simple as PostgreSQL
+
+-- FIXME: Add a RollbackError constructor.
 
 --------------------------------------------------------------------------------
 -- | Database errors.
-data DBError
+--
+-- @since 0.1.0.0
+newtype DbError
   = SqlError PostgreSQL.SqlError
-    -- ^ A possibly recoverable error.  (Note: this does not represent
-    -- a SQL syntax error, but rather a problem running the SQL
-    -- statement.)
+    -- ^ A possibly recoverable error.  (Note: this /does/ not
+    -- represent a SQL syntax error, but rather a problem running the
+    -- SQL statement.)
 
-    | MigrationError Text
-      -- ^ An error occurred during a database migration.
-
-    deriving (Eq, Show)
-
-makeClassyPrisms ''DBError
+  deriving (Eq, Show)

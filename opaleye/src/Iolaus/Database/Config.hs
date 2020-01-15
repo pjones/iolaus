@@ -26,9 +26,12 @@ module Iolaus.Database.Config
 -- Library Imports:
 import Data.Aeson (ToJSON, FromJSON)
 import Data.Text (Text)
-import Dhall (Interpret)
 import GHC.Generics (Generic)
 import Numeric.Natural (Natural)
+
+-- FIXME: Remove Dhall support.
+-- FIXME: Remove Nothing values.
+-- FIXME: Make lens.
 
 --------------------------------------------------------------------------------
 -- | Database configuration.
@@ -36,10 +39,11 @@ import Numeric.Natural (Natural)
 -- There are several ways to parse a configuration file that contains
 -- the fields from this record:
 --
---   * Use the 'Dhall.inputFile' function from the @dhall@ package.
 --   * Decode from JSON via the @aeson@ package.
 --   * Decode from YAML via the @yaml@ package.
 --
+--
+-- @since 0.1.0.0
 data Config = Config
   { connectionString :: Text
     -- ^ libpq connection string.
@@ -65,10 +69,12 @@ data Config = Config
   , metricsPrefix :: Maybe Text
     -- ^ The prefix for collected metrics.  Example: @iolaus.opaleye@
 
-  } deriving (Generic, Show, Eq, Interpret, ToJSON, FromJSON)
+  } deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 --------------------------------------------------------------------------------
 -- | Build a default configuration by supplying a connection string.
+--
+-- @since 0.1.0.0
 defaultConfig :: Text -> Config
 defaultConfig t = Config { connectionString = t
                          , poolSize         = Nothing
