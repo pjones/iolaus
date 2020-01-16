@@ -119,3 +119,4 @@ test-suite test
 
   other-modules:
     Iolaus.Test.Newtype
+    Iolaus.Test.JSON

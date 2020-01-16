@@ -21,9 +21,11 @@ import Test.Tasty
 
 --------------------------------------------------------------------------------
 import qualified Iolaus.Test.Newtype as Newtype
+import qualified Iolaus.Test.JSON as JSON
 
 --------------------------------------------------------------------------------
 main :: IO ()
 main = defaultMain $ testGroup "Tests"
   [ Newtype.test
+  , JSON.test
   ]

@@ -17,7 +17,7 @@ Copyright:
 
 License: BSD-2-Clause
 
-Use PostgreSQL JSON columns to hold Haskell types.
+Use PostgreSQL @jsonb@ columns to hold Haskell types.
 
 -}
 module Iolaus.Database.JSON
@@ -26,11 +26,10 @@ module Iolaus.Database.JSON
     -- $use
 
     -- * Functions
-    liftJSON,
+    liftJSON
 
     -- * Types
-    LiftJSON(..)
-
+  , LiftJSON(..)
   ) where
 
 --------------------------------------------------------------------------------
@@ -85,7 +84,7 @@ newtype LiftJSON a = LiftJSON { unliftJSON :: a }
 instance (FromJSON a, Typeable a) => FromField (LiftJSON a) where
   fromField f b = go =<< fromField f b
     where
-      go :: (FromJSON a, Typeable a) => Aeson.Value -> Conversion (LiftJSON a)
+      go :: Aeson.Value -> Conversion (LiftJSON a)
       go v = case Aeson.fromJSON v of
                Aeson.Success x -> return (LiftJSON x)
                Aeson.Error e   -> returnError ConversionFailed f e
@@ -104,10 +103,10 @@ liftJSON :: TH.Name -> TH.Q [TH.Dec]
 liftJSON name =
   [d|
     instance FromField $(TH.conT name) where
-      fromField f b = unliftJSON <$> fromField f b
+      fromField = (fmap (\(LiftJSON a) -> a) .) . fromField
 
     instance QueryRunnerColumnDefault SqlJsonb $(TH.conT name) where
-      queryRunnerColumnDefault = unliftJSON <$> queryRunnerColumnDefault
+      queryRunnerColumnDefault = fmap (\(LiftJSON a) -> a) queryRunnerColumnDefault
 
     instance Default Constant $(TH.conT name) (Column SqlJsonb) where
       def = Constant (sqlValueJSONB . Aeson.toJSON)
