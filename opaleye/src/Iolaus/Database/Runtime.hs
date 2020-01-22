@@ -33,7 +33,6 @@ import Control.Monad.IO.Class
 import Data.Pool (Pool)
 import qualified Data.Pool as Pool
 import Data.Text (Text)
-import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.PostgreSQL.Simple as PostgreSQL
@@ -71,10 +70,7 @@ initRuntime c store =
           <*> pure c
   where
     prefix :: Text
-    prefix =
-      case metricsPrefix c of
-        Just t -> Text.strip $ Text.dropWhileEnd (== '.') t
-        Nothing -> "iolaus.opaleye"
+    prefix = c ^. metricsPrefix
 
     counter :: Text -> IO (Maybe Counter)
     counter name =
@@ -85,14 +81,14 @@ initRuntime c store =
 --------------------------------------------------------------------------------
 -- | Given a configuration object, create a database handle.
 mkPool :: (MonadIO m) => Config -> m (Pool Connection)
-mkPool Config{connectionString, poolSize, poolTimeoutSec} =
+mkPool cfg =
     liftIO (Pool.createPool open close 1 timeout size)
   where
-    constr  = Text.encodeUtf8 connectionString
+    constr  = Text.encodeUtf8 (cfg ^. connectionString)
     open    = PostgreSQL.connectPostgreSQL constr
     close   = PostgreSQL.close
-    timeout = maybe 120 fromIntegral poolTimeoutSec
-    size    = maybe 5   fromIntegral poolSize
+    timeout = fromIntegral (cfg ^. poolTimeoutSec)
+    size    = fromIntegral (cfg ^. poolSize)
 
 --------------------------------------------------------------------------------
 -- | Yields a database connection to a function.  Useful when you need

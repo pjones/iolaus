@@ -1,5 +1,4 @@
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 {-|
 
@@ -18,20 +17,24 @@ License: BSD-2-Clause
 
 -}
 module Iolaus.Database.Config
-  ( Config(..)
+  ( Config
+  , connectionString
+  , poolSize
+  , poolTimeoutSec
+  , retries
+  , backoff
+  , metricsPrefix
   , defaultConfig
   ) where
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import Data.Aeson (ToJSON, FromJSON)
+import Data.Aeson (ToJSON, FromJSON, (.=), (.:), (.:?), (.!=))
+import qualified Data.Aeson as Aeson
 import Data.Text (Text)
-import GHC.Generics (Generic)
+import qualified Data.Text as Text
+import Lens.Micro.TH (makeLenses)
 import Numeric.Natural (Natural)
-
--- FIXME: Remove Dhall support.
--- FIXME: Remove Nothing values.
--- FIXME: Make lens.
 
 --------------------------------------------------------------------------------
 -- | Database configuration.
@@ -42,44 +45,71 @@ import Numeric.Natural (Natural)
 --   * Decode from JSON via the @aeson@ package.
 --   * Decode from YAML via the @yaml@ package.
 --
---
 -- @since 0.1.0.0
 data Config = Config
-  { connectionString :: Text
+  { _connectionString :: Text
     -- ^ libpq connection string.
 
-  , poolSize :: Maybe Natural
+  , _poolSize :: Natural
     -- ^ Size of the database connection pool.  A value of 'Nothing'
     -- means to use the default value.
 
-  , poolTimeoutSec :: Maybe Natural
+  , _poolTimeoutSec :: Natural
     -- ^ Number of seconds to leave an unused connection open.  A
     -- value of 'Nothing' means to use the default value.
 
-  , retries :: Maybe Natural
+  , _retries :: Natural
     -- ^ Number of times to retry a failed query.  Set to @0@ to
     -- disable.  (A value of 'Nothing' means to use the default.)
 
-  , backoff :: Maybe Natural
+  , _backoff :: Natural
     -- ^ Number of microseconds (\(10^{-6}\)) to wait before retrying a
     -- failed query.  This value is increased exponentially after each
     -- subsequent failure.  (A value of 'Nothing' means use the
     -- default.)
 
-  , metricsPrefix :: Maybe Text
+  , _metricsPrefix :: Text
     -- ^ The prefix for collected metrics.  Example: @iolaus.opaleye@
 
-  } deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  } deriving (Show, Eq)
+
+makeLenses ''Config
+
+--------------------------------------------------------------------------------
+instance FromJSON Config where
+  parseJSON = Aeson.withObject "Database Config" $ \v ->
+    Config <$> v .:  "connection_string"
+           <*> v .:? "pool_size"        .!= _poolSize
+           <*> v .:? "pool_timeout_sec" .!= _poolTimeoutSec
+           <*> v .:? "retries"          .!= _retries
+           <*> v .:? "backoff"          .!= _backoff
+           <*> fmap fixPrefix (v .:? "metrics_prefix" .!= _metricsPrefix)
+
+    where
+      Config{..} = defaultConfig (error "impossible")
+      fixPrefix = Text.strip . Text.dropWhileEnd (== '.')
+
+--------------------------------------------------------------------------------
+instance ToJSON Config where
+  toJSON Config{..} = Aeson.object
+    [ "connection_string" .= _connectionString
+    , "pool_size"         .= _poolSize
+    , "pool_timeout_sec"  .= _poolTimeoutSec
+    , "retries"           .= _retries
+    , "backoff"           .= _backoff
+    , "metrics_prefix"    .= _metricsPrefix
+    ]
 
 --------------------------------------------------------------------------------
 -- | Build a default configuration by supplying a connection string.
 --
 -- @since 0.1.0.0
 defaultConfig :: Text -> Config
-defaultConfig t = Config { connectionString = t
-                         , poolSize         = Nothing
-                         , poolTimeoutSec   = Nothing
-                         , retries          = Nothing
-                         , backoff          = Nothing
-                         , metricsPrefix    = Nothing
-                         }
+defaultConfig t =
+  Config { _connectionString = t
+         , _poolSize         = 5
+         , _poolTimeoutSec   = 120
+         , _retries          = 3
+         , _backoff          = 50000 {- 50ms -}
+         , _metricsPrefix    = "iolaus.opaleye"
+         }

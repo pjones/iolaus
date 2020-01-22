@@ -29,7 +29,7 @@ module Iolaus.Database
   , delete
 
     -- * Configuration
-  , Config(..)
+  , Config
   , defaultConfig
   , Runtime
   , initRuntime
