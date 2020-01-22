@@ -95,6 +95,7 @@ library
     Control.Carrier.Database
     Control.Effect.Database
     Iolaus.Database
+    Iolaus.Database.Extra
     Iolaus.Database.JSON
     Iolaus.Database.Migrate
     Iolaus.Database.Newtype

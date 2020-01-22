@@ -20,7 +20,9 @@ module Iolaus.Database.Query
   ( Query
   , select
   , select1
+  , count
   , insert
+  , insert1
   , update
   , delete
 

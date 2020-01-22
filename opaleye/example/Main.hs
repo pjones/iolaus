@@ -78,6 +78,11 @@ fetchEveryone :: (Has Database sig m, Has (Throw DbError) sig m)
 fetchEveryone = runQuery (select (selectTable people))
 
 --------------------------------------------------------------------------------
+-- | Example of counting matching rows.
+numberOfPeople :: (Has Database sig m, Has (Throw DbError) sig m) => m Int64
+numberOfPeople = runQuery (count (selectTable people))
+
+--------------------------------------------------------------------------------
 app :: ( Has Database sig m
        , Has (Throw DbError) sig m
        , Has (Lift IO) sig m
@@ -92,6 +97,9 @@ app = do
 
   createNewPerson fn ln
   fetchEveryone >>= mapM_ (sendM . print)
+
+  n <- numberOfPeople
+  sendM (putStrLn ("Number of records in the table: " <> show n))
 
 --------------------------------------------------------------------------------
 main :: IO ()
