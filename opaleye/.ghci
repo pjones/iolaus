@@ -1,0 +1,6 @@
+:set prompt ">>> "
+:set -XTypeApplications
+
+import Data.Int
+import Data.Text (Text)
+import Opaleye.SqlTypes

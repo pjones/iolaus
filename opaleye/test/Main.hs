@@ -20,12 +20,14 @@ module Main (main) where
 import Test.Tasty
 
 --------------------------------------------------------------------------------
-import qualified Iolaus.Test.Newtype as Newtype
 import qualified Iolaus.Test.JSON as JSON
+import qualified Iolaus.Test.Newtype as Newtype
+import qualified Iolaus.Test.Table as Table
 
 --------------------------------------------------------------------------------
 main :: IO ()
 main = defaultMain $ testGroup "Tests"
   [ Newtype.test
   , JSON.test
+  , Table.test
   ]

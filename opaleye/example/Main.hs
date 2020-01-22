@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE UndecidableInstances       #-}
 
 {-|
 
@@ -25,54 +26,55 @@ module Main (main) where
 
 --------------------------------------------------------------------------------
 -- Imports:
-import Control.Carrier.Lift
 import Control.Carrier.Database
+import Control.Carrier.Lift
 import Control.Carrier.Throw.Either
 import Data.Function ((&))
-import Data.Profunctor.Product.TH (makeAdaptorAndInstance)
+import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Opaleye (Table, Field, table, tableField, selectTable)
-import qualified Opaleye.Constant as C
-import Opaleye.SqlTypes (SqlText)
+import Iolaus.Database.Table
+import Opaleye.SqlTypes (SqlText, SqlInt8)
 import System.Environment (getEnv)
 import System.FilePath ((</>))
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout)
 import qualified System.Metrics as Metrics
 
 --------------------------------------------------------------------------------
--- | Access the schema files for the database migrations:
+-- Access the schema files for the database migrations:
 import Paths_iolaus_opaleye (getDataDir)
 
 --------------------------------------------------------------------------------
--- | Database table type.  Standard Opaleye stuff.
-data Person' name = Person
-  { firstName :: name
-  , lastName  :: name
-  } deriving Show
+-- | The table's primary key.
+type PersonId = Key Int64 Person
 
-$(makeAdaptorAndInstance "pPerson" ''Person')
+--------------------------------------------------------------------------------
+-- | Database table type, using the type family style from the
+-- "Iolaus.Database.Table" module.
+data Person f = Person
+  { pkey      :: Col f "id"         PersonId SqlInt8 ReadOnly
+  , firstName :: Col f "first_name" Text     SqlText Required
+  , lastName  :: Col f "last_name"  Text     SqlText Required
+  }
 
-people :: Table (Person' (Field SqlText)) (Person' (Field SqlText))
-people = table "people" (pPerson
-  Person { firstName = tableField "first_name"
-         , lastName  = tableField "last_name"
-         })
+deriving instance Show (Person ForHask)
+deriving instance Eq (Person ForHask)
+
+makeTable ''Person "people"
 
 --------------------------------------------------------------------------------
 -- | Insert a new person into the database.
 createNewPerson :: (Has Database sig m, Has (Throw DbError) sig m)
                 => Text -> Text -> m ()
 createNewPerson fn ln = do
-  let p = Person (C.constant fn) (C.constant ln)
+  let p = Person Nothing (toFields fn) (toFields ln)
   _ <- runQuery (insert (Insert people [p] rCount Nothing))
   pure ()
 
 --------------------------------------------------------------------------------
--- | Example running a database SELECT from within our app's
--- transformer stack.
+-- | Example running a database SELECT.
 fetchEveryone :: (Has Database sig m, Has (Throw DbError) sig m)
-              => m [Person' Text]
+              => m [Person ForHask]
 fetchEveryone = runQuery (select (selectTable people))
 
 --------------------------------------------------------------------------------
