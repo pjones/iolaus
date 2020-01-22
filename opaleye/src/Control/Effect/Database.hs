@@ -34,6 +34,7 @@ module Control.Effect.Database
   , transactionEither
   , transactionWith
   , transactionEitherWith
+  , rollback
 
     -- * Schema Migrations
   , migrate
@@ -55,6 +56,6 @@ module Control.Effect.Database
 --------------------------------------------------------------------------------
 import Control.Algebra
 import Control.Effect.Database.Internal
-import Database.PostgreSQL.Simple.Transaction
+import Database.PostgreSQL.Simple.Transaction hiding (rollback)
 import Iolaus.Database.Migrate (MigrationVerbosity(..), MigrationResult(..))
 import Iolaus.Database.Query

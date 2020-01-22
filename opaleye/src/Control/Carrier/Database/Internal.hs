@@ -26,9 +26,11 @@ module Control.Carrier.Database.Internal
 import Control.Algebra
 import Control.Carrier.Reader
 import Control.Monad.IO.Class
+import Control.Exception (throwIO)
 
 --------------------------------------------------------------------------------
 import Control.Effect.Database.Internal (Database(..))
+import Iolaus.Database.Error
 import Iolaus.Database.Migrate (migrate, initialized)
 import Iolaus.Database.Query.Internal (Query(..))
 import Iolaus.Database.Runtime (Runtime, catchQueryErrors, unsafeRunPg)
@@ -48,6 +50,7 @@ instance (MonadIO m, Algebra sig m) => Algebra (Database :+: sig) (DatabaseC m) 
   alg (L opt) = case opt of
     RunQuery q k -> DatabaseC (runQ q) >>= k
     Transaction t q k -> DatabaseC (runT t q) >>= k
+    ThrowRollback _ -> DatabaseC (liftIO . throwIO $ Rollback ())
     Migrate p v k -> DatabaseC (ask >>= \rt -> migrate rt p v) >>= k
     MigrationTableExists k -> DatabaseC (ask >>= initialized) >>= k
     where

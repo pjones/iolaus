@@ -22,6 +22,7 @@ module Control.Effect.Database.Internal
   , transaction
   , transactionEitherWith
   , transactionWith
+  , rollback
   , migrate
   , migrationTableExists
   ) where
@@ -50,6 +51,9 @@ data Database m k
   | forall a .
     Transaction TransactionMode (Query a) (Either DbError a -> m k)
 
+  | forall a .
+    ThrowRollback (a -> m k)
+
   | Migrate FilePath MigrationVerbosity (MigrationResult String -> m k)
 
   | MigrationTableExists (Bool -> m k)
@@ -60,6 +64,7 @@ instance HFunctor Database where
   hmap f = \case
     RunQuery q k           -> RunQuery q (f . k)
     Transaction t q k      -> Transaction t q (f . k)
+    ThrowRollback k        -> ThrowRollback (f . k)
     Migrate p v k          -> Migrate p v (f . k)
     MigrationTableExists k -> MigrationTableExists (f . k)
 
@@ -67,6 +72,7 @@ instance Effect Database where
   thread ctx handler = \case
     RunQuery q k           -> RunQuery q (handler . (<$ ctx) . k)
     Transaction t q k      -> Transaction t q (handler . (<$ ctx) . k)
+    ThrowRollback k        -> ThrowRollback (handler . (<$ ctx) . k)
     Migrate p v k          -> Migrate p v (handler . (<$ ctx) . k)
     MigrationTableExists k -> MigrationTableExists (handler . (<$ ctx) . k)
 
@@ -168,6 +174,14 @@ transactionWith
   -> Query a
   -> m a
 transactionWith t = either throwError pure <=< transactionEitherWith t
+
+--------------------------------------------------------------------------------
+-- | Abort and rollback the current transaction.
+--
+-- The running transaction (or query) will terminate with a
+--' RollbackError' error.
+rollback :: Has Database sig m => m a
+rollback = send (ThrowRollback pure)
 
 --------------------------------------------------------------------------------
 -- | Migrate the database.

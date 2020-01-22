@@ -141,7 +141,7 @@ type instance T.A ('T.H SqlRead_) ('ColEnc '(h, d, m, n))
   = T.TableRecordField ('T.H T.OT) h d (OpaleyeNullable m) (OpaleyeOptional m)
 
 --------------------------------------------------------------------------------
--- | Turn the record fields into FIXME:
+-- | Turn the record fields into nullable fields:
 type instance T.A ('T.H ForceNullable_) ('ColEnc '(h, d, m, n))
   = T.TableRecordField ('T.H T.OT) h d T.N T.Req
 

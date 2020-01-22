@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+
 {-|
 
 Copyright:
@@ -16,22 +18,30 @@ License: BSD-2-Clause
 -}
 module Iolaus.Database.Error
   ( DbError(..)
+  , Rollback(..)
   ) where
 
 --------------------------------------------------------------------------------
 -- Library Imports:
 import qualified Database.PostgreSQL.Simple as PostgreSQL
+import Control.Exception (Exception)
 
--- FIXME: Add a RollbackError constructor.
+--------------------------------------------------------------------------------
+-- An exception that triggers a database transaction rollback.
+newtype Rollback = Rollback ()
+  deriving (Eq, Show, Exception)
 
 --------------------------------------------------------------------------------
 -- | Database errors.
 --
 -- @since 0.1.0.0
-newtype DbError
+data DbError
   = SqlError PostgreSQL.SqlError
     -- ^ A possibly recoverable error.  (Note: this /does/ not
     -- represent a SQL syntax error, but rather a problem running the
     -- SQL statement.)
+
+  | RollbackError
+    -- ^ A 'Rollback' exception was thrown.
 
   deriving (Eq, Show)

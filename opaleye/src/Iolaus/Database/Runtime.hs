@@ -107,4 +107,6 @@ unsafeRunPg e = Pool.withResource (e ^. pool)
 catchQueryErrors :: IO a -> IO (Either DbError a)
 catchQueryErrors m =
   catches (Right <$> m)
-    [ Handler $ \(e :: PostgreSQL.SqlError) -> pure . Left $ SqlError e ]
+    [ Handler $ \(e :: PostgreSQL.SqlError) -> pure (Left (SqlError e))
+    , Handler $ \(_ :: Rollback) -> pure (Left RollbackError)
+    ]
