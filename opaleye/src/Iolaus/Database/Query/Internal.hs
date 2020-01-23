@@ -20,6 +20,7 @@ module Iolaus.Database.Query.Internal
   ( Query(..)
   , select
   , select1
+  , selectToStream
   , count
   , insert
   , insert1
@@ -29,11 +30,14 @@ module Iolaus.Database.Query.Internal
 
 --------------------------------------------------------------------------------
 import Control.Carrier.Reader
+import Control.Exception (onException)
+import Control.Monad (MonadPlus(..))
 import Control.Monad.IO.Class
 import Data.Int (Int64)
 import Data.Maybe (listToMaybe, fromMaybe)
 import Data.Profunctor.Product.Default (Default)
 import Database.PostgreSQL.Simple (Connection)
+import qualified Database.PostgreSQL.Simple.Transaction as Pg
 import Lens.Micro
 import Opaleye (FromFields, Select, Insert, Update, Delete)
 import qualified Opaleye as O
@@ -86,6 +90,55 @@ select = Query . liftOpaleyeOp . flip O.runSelect
 -- @since 0.1.0.0
 select1 :: (Default FromFields a b) => Select a -> Query (Maybe b)
 select1 = fmap listToMaybe . select . O.limit 1
+
+--------------------------------------------------------------------------------
+-- | Like 'select', except that the results are streamed on demand.
+--
+-- A @ListT@ implementation is needed to read the results of the
+-- stream.  Compatible packages include:
+--
+--   * <https://hackage.haskell.org/package/List List>
+--   * <https://hackage.haskell.org/package/list-t list-t>
+--   * <https://hackage.haskell.org/package/logict logict>
+--   * <https://hackage.haskell.org/package/list-transformer list-transformer>
+--   * <https://hackage.haskell.org/package/pipes pipes>
+--
+-- Using a @ListT@ implementation ensures that all rows are processed
+-- in constant space and that only one row is in memory at a time.
+--
+-- NOTE: Internally this uses a database cursor.  Therefore it needs
+-- to create a transaction that will remain open until all rows have
+-- been read.  As a consequence, this function /cannot/ be used from
+-- within an existing transaction.  One of the @runQuery@ variants
+-- must be used to execute this query.
+--
+-- @since 0.1.0.0
+selectToStream
+  :: forall m a b. (Default FromFields a b, MonadPlus m, MonadIO m)
+  => Select a
+  -> Query (m b)
+selectToStream = Query . go
+  where
+    go :: forall k sig .
+       ( MonadIO k
+       , Has (Reader (Runtime, Connection)) sig k
+       )
+       => Select a -> k (m b)
+    go query = do
+      (_, conn) <- ask :: k (Runtime, Connection)
+      cursor <- liftIO (Pg.begin conn >> O.declareCursor conn query) :: k (O.Cursor b)
+
+      let closeC   = O.closeCursor cursor >> Pg.commit conn
+          foldF    = O.foldForward cursor 1 (const pure) undefined
+          foldSafe = onException foldF (Pg.rollback conn)
+
+      pure (loop closeC foldSafe)
+
+    loop :: IO () -> IO (Either b b) -> m b
+    loop closeC foldC =
+      liftIO foldC >>= \case
+        Left  _ -> liftIO closeC >> mzero
+        Right x -> pure x `mplus` loop closeC foldC
 
 --------------------------------------------------------------------------------
 -- | Count all of the rows returned from the given 'Select'.

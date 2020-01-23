@@ -71,7 +71,7 @@ nameToTableInfo name tbl = reify name >>= \case
     fromRec dctor fs = do
       flds <- mapM (\(n, _, t) -> fieldToFieldInfo (n, t)) fs
 
-      return TableInfo
+      pure TableInfo
         { tbl_tctor   = name
         , tbl_dctor   = dctor
         , tbl_fields  = NonEmpty.fromList flds
@@ -121,7 +121,7 @@ makeAdapter :: TableInfo -> Q [Dec]
 makeAdapter TableInfo{..} = do
     asig <- adapterSig tbl_adname
     adef <- adapterDef tbl_adname
-    return [asig, adef]
+    pure [asig, adef]
   where
     adapterSig :: Name -> Q Dec
     adapterSig fname = do
@@ -182,7 +182,7 @@ makeAdapter TableInfo{..} = do
       let lmaps     = fmap (applyLmap arg . fld_name) tbl_fields
           inner     = VarE '(***$) `AppE` ConE tbl_dctor `AppE` NonEmpty.head lmaps
           embed f s = VarE '(****) `AppE` s `AppE` f
-      in return (foldr embed inner (reverse (NonEmpty.tail lmaps)))
+      in pure (foldr embed inner (reverse (NonEmpty.tail lmaps)))
 
 --------------------------------------------------------------------------------
 -- | Generate the instance for the @Default@ class.
@@ -198,7 +198,7 @@ makeDefaultInstance TableInfo{..} = do
                   (ConT tbl_tctor `AppT` VarT a) `AppT`
                   (ConT tbl_tctor `AppT` VarT b)
 
-    return [InstanceD Nothing cxts itype [defMethod]]
+    pure [InstanceD Nothing cxts itype [defMethod]]
 
   where
     prodproCxt :: Name -> Cxt

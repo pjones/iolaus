@@ -20,6 +20,7 @@ module Iolaus.Database.Query
   ( Query
   , select
   , select1
+  , selectToStream
   , count
   , insert
   , insert1

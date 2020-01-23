@@ -3,8 +3,7 @@ cabal-version:       2.2
 --------------------------------------------------------------------------------
 name:                iolaus-opaleye
 version:             0.1.0.0
-synopsis:            Common bits of Opaleye that you need in all your apps.
-description:         Please see the README.md file.
+synopsis:            A database effect built on top of Opaleye and fused-effects
 license:             BSD-2-Clause
 license-file:        LICENSE
 author:              Peter Jones <pjones@devalot.com>
@@ -12,6 +11,7 @@ maintainer:          Peter Jones <pjones@devalot.com>
 copyright:           Copyright (c) 2019-2020 Peter Jones
 category:            Application
 -- bug-reports:
+description:         Please see the README.md file.
 
 --------------------------------------------------------------------------------
 extra-source-files:
@@ -117,7 +117,7 @@ executable example
   import: options, dependencies
   hs-source-dirs: example
   main-is: Main.hs
-  build-depends: iolaus-opaleye
+  build-depends: iolaus-opaleye, list-transformer
 
   other-modules:
     Paths_iolaus_opaleye

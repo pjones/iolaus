@@ -24,12 +24,21 @@ module Iolaus.Database
     Query
   , select
   , select1
+  , selectToStream
+  , count
   , insert
+  , insert1
   , update
   , delete
 
     -- * Configuration
   , Config
+  , connectionString
+  , poolSize
+  , poolTimeoutSec
+  , retries
+  , backoff
+  , metricsPrefix
   , defaultConfig
   , Runtime
   , initRuntime

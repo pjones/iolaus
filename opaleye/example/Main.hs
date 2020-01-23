@@ -34,6 +34,7 @@ import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Iolaus.Database.Table
+import List.Transformer (ListT(..), Step(..))
 import Opaleye.SqlTypes (SqlText, SqlInt8)
 import System.Environment (getEnv)
 import System.FilePath ((</>))
@@ -78,6 +79,27 @@ fetchEveryone :: (Has Database sig m, Has (Throw DbError) sig m)
 fetchEveryone = runQuery (select (selectTable people))
 
 --------------------------------------------------------------------------------
+printEveryoneStreaming
+  :: ( Has Database sig m
+     , Has (Throw DbError) sig m
+     , Has (Lift IO) sig m
+     )
+  => m ()
+printEveryoneStreaming = do
+    list <- runQuery (selectToStream (selectTable people))
+    sendM (loop list)
+  where
+    loop :: ListT IO (Person ForHask) -> IO ()
+    loop list = do
+      row <- next list
+
+      case row of
+        Nil -> return ()
+        Cons person list' -> do
+          print person
+          loop list'
+
+--------------------------------------------------------------------------------
 -- | Example of counting matching rows.
 numberOfPeople :: (Has Database sig m, Has (Throw DbError) sig m) => m Int64
 numberOfPeople = runQuery (count (selectTable people))
@@ -96,7 +118,12 @@ app = do
   ln <- Text.pack <$> sendM (putStr "And now your family/last name: " >> getLine)
 
   createNewPerson fn ln
+
+  sendM (putStrLn "Fetching all rows as once: ")
   fetchEveryone >>= mapM_ (sendM . print)
+
+  sendM (putStrLn "Streaming the entire table row by row: ")
+  printEveryoneStreaming
 
   n <- numberOfPeople
   sendM (putStrLn ("Number of records in the table: " <> show n))
