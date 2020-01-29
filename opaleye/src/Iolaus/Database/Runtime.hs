@@ -29,6 +29,8 @@ module Iolaus.Database.Runtime
 
 --------------------------------------------------------------------------------
 import Control.Exception (Handler(..), catches)
+import Control.Lens ((^.))
+import Control.Lens.TH (makeLenses)
 import Control.Monad.IO.Class
 import Data.Pool (Pool)
 import qualified Data.Pool as Pool
@@ -36,8 +38,6 @@ import Data.Text (Text)
 import qualified Data.Text.Encoding as Text
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.PostgreSQL.Simple as PostgreSQL
-import Lens.Micro
-import Lens.Micro.TH (makeLenses)
 import qualified System.Metrics as Metrics
 import System.Metrics.Counter (Counter)
 

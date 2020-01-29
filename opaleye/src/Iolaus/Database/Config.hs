@@ -29,11 +29,11 @@ module Iolaus.Database.Config
 
 --------------------------------------------------------------------------------
 -- Library Imports:
+import Control.Lens.TH (makeLenses)
 import Data.Aeson (ToJSON, FromJSON, (.=), (.:), (.:?), (.!=))
 import qualified Data.Aeson as Aeson
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Lens.Micro.TH (makeLenses)
 import Numeric.Natural (Natural)
 
 --------------------------------------------------------------------------------

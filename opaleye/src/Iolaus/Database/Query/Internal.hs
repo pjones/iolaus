@@ -31,6 +31,7 @@ module Iolaus.Database.Query.Internal
 --------------------------------------------------------------------------------
 import Control.Carrier.Reader
 import Control.Exception (onException)
+import Control.Lens ((^.))
 import Control.Monad (MonadPlus(..))
 import Control.Monad.IO.Class
 import Data.Int (Int64)
@@ -38,7 +39,6 @@ import Data.Maybe (listToMaybe, fromMaybe)
 import Data.Profunctor.Product.Default (Default)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.PostgreSQL.Simple.Transaction as Pg
-import Lens.Micro
 import Opaleye (FromFields, Select, Insert, Update, Delete)
 import qualified Opaleye as O
 import qualified System.Metrics.Counter as Counter

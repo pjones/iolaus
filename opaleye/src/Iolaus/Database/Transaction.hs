@@ -19,12 +19,12 @@ module Iolaus.Database.Transaction
   ) where
 
 --------------------------------------------------------------------------------
+import Control.Lens ((^.))
 import Control.Monad.Catch (Handler(..), SomeException)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.PostgreSQL.Simple as PostgreSQL
 import Database.PostgreSQL.Simple.Transaction (TransactionMode)
 import qualified Database.PostgreSQL.Simple.Transaction as PostgreSQL
-import Lens.Micro
 import qualified System.Metrics.Counter as Counter
 
 --------------------------------------------------------------------------------

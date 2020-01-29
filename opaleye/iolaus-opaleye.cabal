@@ -74,8 +74,8 @@ common dependencies
                , exceptions                  >= 0.10  && < 0.11
                , filepath                    >= 1.4   && < 1.5
                , fused-effects               >= 1.0   && < 1.1
-               , microlens                   >= 0.4   && < 0.5
-               , microlens-th                >= 0.4   && < 0.5
+               , lens                        >= 4.0   && < 5.0
+               , mtl                         >= 2.2   && < 2.3
                , opaleye                     >= 0.6   && < 0.7
                , postgresql-simple           >= 0.5   && < 0.7
                , postgresql-simple-migration >= 0.1   && < 0.2
