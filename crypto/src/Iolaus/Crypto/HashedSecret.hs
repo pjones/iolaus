@@ -1,9 +1,3 @@
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RecordWildCards       #-}
-
 {-|
 
 Copyright:
@@ -45,8 +39,7 @@ import Opaleye
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Iolaus.Crypto.API
-import Iolaus.Crypto.Monad (MonadCrypto, Key)
+import Control.Monad.Crypto
 import Iolaus.Crypto.Salt
 import Iolaus.Crypto.SaltedHash
 import Iolaus.Crypto.Secret
@@ -99,4 +92,4 @@ toHashedSecret
   -> SharedSalt  -- ^ The salt to use for hashing.
   -> a           -- ^ The value to protect.
   -> m (HashedSecret a)
-toHashedSecret k s a = HashedSecret (saltedHash s a) <$> encrypt k a
+toHashedSecret k s a = HashedSecret (saltedHash s a) <$> encrypt' k a

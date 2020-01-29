@@ -1,13 +1,4 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase                 #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 {-|
 
@@ -32,6 +23,13 @@ module Iolaus.Crypto.Cryptonite
   , initCryptoniteT
   , runCryptoniteT
   , runCryptoniteT'
+
+    -- * Re-exports
+  , KeyManager(..)
+  , FileExtension(..)
+  , GetStatus(..)
+  , PutStatus(..)
+  , module Iolaus.Crypto
   ) where
 
 --------------------------------------------------------------------------------
@@ -53,15 +51,17 @@ import Control.Monad.Cont
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State.Class
-import Iolaus.Database (MonadDB(..))
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Iolaus.Crypto.Key
+import Control.Monad.CertAuth
+import Control.Monad.Crypto.Internal
+import Control.Monad.Crypto.KeyAccess
+import Iolaus.Crypto
 import Iolaus.Crypto.Cryptonite.Asymmetric as Asymmetric
 import Iolaus.Crypto.Cryptonite.Symmetric as Symmetric
 import Iolaus.Crypto.Error
-import Iolaus.Crypto.Monad
+import Iolaus.Crypto.Key (fileManager)
 import Iolaus.Crypto.PEM
 
 --------------------------------------------------------------------------------
@@ -80,15 +80,16 @@ makeClassy ''Cryptonite
 -- | An internal transformer for random bytes.
 newtype RandomT m a = RandomT
   { unR :: ReaderT RNG m a }
-  deriving ( Functor
-           , Applicative
-           , Monad
-           , MonadIO
-           , MonadTrans
-           , MonadError e
-           , MonadState s
-           , MonadCont
-           )
+  deriving newtype ( Functor
+                   , Applicative
+                   , Monad
+                   , MonadIO
+                   , MonadTrans
+                   , MonadError e
+                   , MonadState s
+                   , MonadCont
+                   , MonadCertAuth
+                   )
 
 runRandomT :: RNG -> RandomT m a -> m a
 runRandomT env = (`runReaderT` env) . unR
@@ -108,20 +109,20 @@ instance (MonadIO m) => MonadRandom (RandomT m) where
     gen  <- liftIO (readIORef slot)
     let (bytes, gen') = randomBytesGenerate n gen
     liftIO (writeIORef slot gen')
-    return bytes
+    pure bytes
 
 --------------------------------------------------------------------------------
 -- | An implementation of 'MonadCrypto' via the Cryptonite library.
 newtype CryptoniteT m a = CryptoniteT
   { unC :: RandomT (ExceptT CryptoError (ReaderT Cryptonite m)) a }
-  deriving ( Functor
-           , Applicative
-           , Monad
-           , MonadIO
-           , MonadRandom
-           , MonadState s
-           , MonadCont
-           )
+  deriving newtype ( Functor
+                   , Applicative
+                   , Monad, MonadIO
+                   , MonadRandom
+                   , MonadState s
+                   , MonadCont
+                   , MonadCertAuth
+                   )
 
 --------------------------------------------------------------------------------
 data instance Key Cryptonite = CryptoniteKey Label SymmetricKey
@@ -132,19 +133,8 @@ instance (MonadIO m) => MonadCrypto Cryptonite (CryptoniteT m) where
   liftCryptoOpt = evalCrypto
 
 --------------------------------------------------------------------------------
-instance (MonadIO m) => HasKeyAccess Cryptonite (CryptoniteT m) where
-  encodeKey (CryptoniteKey l k) = return (Binary.encode (l, k))
-
-  decodeKey bs = case Binary.decodeOrFail bs of
-    Left _ -> return Nothing
-    Right (_, _, (l, k)) -> return (Just (CryptoniteKey l k))
-
-  encodePrivateKey (CryptoniteKeyPair _ k) = return $
-    encodePEM [toPEM PrivateKeySection (Asymmetric.toX509PrivKey k)]
-
-  decodePrivateKey = return . fmap (CryptoniteKeyPair (toLabel "None")) .
-    (Asymmetric.fromX509PrivKey <=< listToMaybe) .
-    concatMap fromPEM . decodePEM
+instance (MonadIO m) => MonadKeyAccess Cryptonite (CryptoniteT m) where
+  liftKeyAccessOpt = evalKeyAccess
 
 --------------------------------------------------------------------------------
 instance MonadTrans CryptoniteT where
@@ -165,19 +155,15 @@ instance (MonadReader r m) => MonadReader r (CryptoniteT m) where
     env <- CryptoniteT (ask :: RandomT (ExceptT CryptoError (ReaderT Cryptonite m)) Cryptonite)
     lift (local f (runCryptoniteT env m)) >>= \case
       Left e  -> CryptoniteT (throwError e)
-      Right a -> return a
-
---------------------------------------------------------------------------------
-instance (MonadDB m) => MonadDB (CryptoniteT m) where
-  liftQuery = lift . liftQuery
+      Right a -> pure a
 
 --------------------------------------------------------------------------------
 evalCrypto
   :: ( MonadIO m )
   => CryptoOpt Cryptonite a
   -> CryptoniteT m a
-evalCrypto opt = CryptoniteT . runF opt return $ \case
-  GenerateRandom n next ->
+evalCrypto opt = CryptoniteT . runF opt pure $ \case
+  GenerateRandomBytes n next ->
     getRandomBytes n >>= next
 
   GenerateKey cipher label next -> do
@@ -199,7 +185,7 @@ evalCrypto opt = CryptoniteT . runF opt return $ \case
     liftCryptoError (Symmetric.decrypt key sec) >>= next
 
   GenerateKeyPair algo label next -> do
-    key <- Asymmetric.generateKeyPair algo
+    key <- Asymmetric.generateKeyPair algo label
     putKey label PrivateExt (Asymmetric.fromKey key)
     next (CryptoniteKeyPair label key)
 
@@ -213,8 +199,8 @@ evalCrypto opt = CryptoniteT . runF opt return $ \case
   ToPublicKey (CryptoniteKeyPair _ key) next ->
     next (Asymmetric.toPublicKey key)
 
-  AsymmetricEncrypt label key bs next ->
-    Asymmetric.encrypt label key bs >>= next
+  AsymmetricEncrypt key bs next ->
+    Asymmetric.encrypt key bs >>= next
 
   AsymmetricDecrypt (CryptoniteKeyPair _ key) secret next ->
     Asymmetric.decrypt key secret >>= next
@@ -224,6 +210,25 @@ evalCrypto opt = CryptoniteT . runF opt return $ \case
 
   VerifySignature pub sig bs next ->
     Asymmetric.verify pub sig bs >>= next
+
+--------------------------------------------------------------------------------
+evalKeyAccess :: MonadIO m => KeyAccessOpt Cryptonite a -> CryptoniteT m a
+evalKeyAccess opt = CryptoniteT . runF opt pure $ \case
+  EncodeKey (CryptoniteKey l k) next ->
+    next (Binary.encode (l, k))
+
+  DecodeKey bs next ->
+    case Binary.decodeOrFail bs of
+      Left _ -> next Nothing
+      Right (_, _, (l, k)) -> next (Just (CryptoniteKey l k))
+
+  EncodePrivateKey (CryptoniteKeyPair _ k) next ->
+    next (encodePEM [toPEM PrivateKeySection (Asymmetric.toX509PrivKey k)])
+
+  DecodePrivateKey label bs next ->
+    next (fmap (CryptoniteKeyPair (toLabel "None")) .
+          (Asymmetric.fromX509PrivKey label <=< listToMaybe) .
+            concatMap fromPEM $ decodePEM bs)
 
 --------------------------------------------------------------------------------
 putKey
@@ -240,7 +245,7 @@ putKey
 putKey label ext bs = do
   mgr <- view envMgr
   liftIO (managerPutKey mgr label ext bs) >>= \case
-    PutSucceeded -> return ()
+    PutSucceeded -> pure ()
     PutKeyExists -> throwing _KeyExistsError (getLabelText label)
     PutFailed    -> throwing _KeyWriteFailure (getLabelText label)
 
@@ -256,8 +261,8 @@ getKey
 getKey label ext = do
   mgr <- view envMgr
   liftIO (managerGetKey mgr label ext) >>= \case
-    GetFailed -> return Nothing
-    GetSucceeded bs -> return (Just bs)
+    GetFailed -> pure Nothing
+    GetSucceeded bs -> pure (Just bs)
 
 --------------------------------------------------------------------------------
 -- | Create a configuration value needed to run cryptographic operations.

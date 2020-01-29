@@ -1,10 +1,4 @@
-{-# LANGUAGE DeriveFunctor             #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE FunctionalDependencies    #-}
-{-# LANGUAGE StandaloneDeriving        #-}
-{-# LANGUAGE TemplateHaskell           #-}
-{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 {-|
 
@@ -22,7 +16,7 @@ Copyright:
 License: BSD-2-Clause
 
 -}
-module Iolaus.Crypto.PKI.Monad
+module Control.Monad.CertAuth
   ( CaOpt
   , CaOptF(..)
   , MonadCertAuth(..)
@@ -56,43 +50,25 @@ import Iolaus.Crypto.Key
 class (Monad m) => MonadCertAuth m where
   liftCaOpt :: CaOpt a -> m a
 
+  default liftCaOpt :: (MonadTrans t, MonadCertAuth m1, m ~ t m1) => CaOpt a -> m a
+  liftCaOpt = lift . liftCaOpt
+
 --------------------------------------------------------------------------------
-instance (MonadCertAuth m) => MonadCertAuth (ExceptT e m) where
-  liftCaOpt = lift . liftCaOpt
-instance (MonadCertAuth m) => MonadCertAuth (StateT s m) where
-  liftCaOpt = lift . liftCaOpt
-instance (MonadCertAuth m) => MonadCertAuth (SState.StateT s m) where
-  liftCaOpt = lift . liftCaOpt
-instance (MonadCertAuth m) => MonadCertAuth (ReaderT r m) where
-  liftCaOpt = lift . liftCaOpt
-instance (MonadCertAuth m) => MonadCertAuth (IdentityT m) where
-  liftCaOpt = lift . liftCaOpt
-instance (MonadCertAuth m) => MonadCertAuth (ContT r m) where
-  liftCaOpt = lift . liftCaOpt
+instance (MonadCertAuth m) => MonadCertAuth (ExceptT e m)
+instance (MonadCertAuth m) => MonadCertAuth (StateT s m)
+instance (MonadCertAuth m) => MonadCertAuth (SState.StateT s m)
+instance (MonadCertAuth m) => MonadCertAuth (ReaderT r m)
+instance (MonadCertAuth m) => MonadCertAuth (IdentityT m)
+instance (MonadCertAuth m) => MonadCertAuth (ContT r m)
 
 --------------------------------------------------------------------------------
 -- | Operations performed by a Certificate Authority.
 data CaOptF f
   = FetchHashAndAlgo ((Hash, Algo) -> f)
-    -- ^ Yield the hashing and asymmetric encryption algorithms that
-    -- should be used.
-
   | FetchRootCert (SignedCertificate -> f)
-    -- ^ Yield the signed root certificate.
-
   | FetchIntermediateCert (SignedCertificate -> f)
-    -- ^ Yield the intermediate certificate that is currently active.
-    -- Note that you may have to generate the certificate and sign it
-    -- with the root certificate.
-
   | SignWithIntermediateCert Certificate (SignedCertificate -> f)
-    -- ^ Sign the given certificate using the active intermediate
-    -- certificate.  Note that you may have to generate the
-    -- intermediate certificate and sign it with the root certificate
-    -- first.
-
-deriving instance Functor CaOptF
+  deriving (Functor)
 
 type CaOpt = F CaOptF
-
 makeFree ''CaOptF

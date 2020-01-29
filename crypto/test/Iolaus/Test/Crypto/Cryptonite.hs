@@ -31,8 +31,6 @@ import Test.Tasty.HUnit
 
 --------------------------------------------------------------------------------
 -- Package Imports:
-import Iolaus.Crypto
-import qualified Iolaus.Crypto.Monad as M
 import Iolaus.Crypto.Cryptonite
 import Iolaus.Test.Crypto.Keys
 
@@ -49,20 +47,22 @@ run =
     ]
 
 --------------------------------------------------------------------------------
-runCrypto :: M.CryptoOpt Cryptonite a -> IO a
-runCrypto = check <=< runCrypto' . M.liftCryptoOpt
-  where check (Left e)  = assertFailure (show e)
-        check (Right a) = return a
+type App a = CryptoniteT (ExceptT CryptoError IO) a
 
 --------------------------------------------------------------------------------
-runCrypto' :: CryptoniteT (ExceptT CryptoError IO) a -> IO (Either CryptoError a)
-runCrypto' m = do
-  mgr <- memoryKeys
-  ct  <- initCryptoniteT mgr
-  runExceptT (runCryptoniteT' ct m)
+runCrypto :: App a -> IO a
+runCrypto = check <=< exec
+  where
+    check (Left e)  = assertFailure (show e)
+    check (Right a) = return a
+
+    exec m = do
+      mgr <- memoryKeys
+      ct  <- initCryptoniteT mgr
+      runExceptT (runCryptoniteT' ct m)
 
 --------------------------------------------------------------------------------
-genericReversible :: M.CryptoOpt Cryptonite (ByteString, Secret ByteString, ByteString) -> Assertion
+genericReversible :: App (ByteString, Secret ByteString, ByteString) -> Assertion
 genericReversible opt = do
   (msg, enc, dec) <- runCrypto opt
   (secretBytes enc /= msg) @? "encrypted value should not match original"
@@ -76,37 +76,38 @@ genericReversible opt = do
 --------------------------------------------------------------------------------
 testSReversible :: Assertion
 testSReversible = genericReversible $ do
-  msg <- M.generateRandom 2048
-  key <- M.generateKey AES256 (toLabel "key")
-  e <- M.encrypt key msg
-  d <- M.decrypt key e
+  msg <- generateRandomBytes 2048
+  key <- generateKey AES256 (toLabel "key")
+  e <- encrypt key msg
+  d <- decrypt key e
   return (msg, e, d)
 
 --------------------------------------------------------------------------------
 testAReversible :: Assertion
 testAReversible = genericReversible $ do
-  msg <- M.generateRandom 2048
-  key <- M.generateKeyPair RSA4096 (toLabel "key")
-  p <- M.toPublicKey key
-  e <- M.asymmetricEncrypt (toLabel "key") p msg
-  d <- M.asymmetricDecrypt key e
+  msg <- generateRandomBytes 2048
+  key <- generateKeyPair RSA4096 (toLabel "key")
+  p <- toPublicKey key
+  e <- asymmetricEncrypt p msg
+  d <- asymmetricDecrypt key e
   return (msg, e, d)
 
 --------------------------------------------------------------------------------
 testPubKey :: Assertion
 testPubKey = do
-  key <- runCrypto (M.generateKeyPair RSA2048 (toLabel "key") >>= M.toPublicKey)
-  (decodePublicKey $ encodePublicKey key) @?= Just key
+  let label = toLabel "key"
+  key <- runCrypto (generateKeyPair RSA2048 label >>= toPublicKey)
+  (decodePublicKey label $ encodePublicKey key) @?= Just key
 
 --------------------------------------------------------------------------------
 testSig :: Assertion
 testSig = do
   status <- runCrypto $ do
-    msg <- M.generateRandom 2048
-    key <- M.generateKeyPair RSA2048 (toLabel "key")
-    pub <- M.toPublicKey key
-    s   <- M.asymmetricSign key SHA2_512 msg
-    M.verifySignature pub s msg
+    msg <- generateRandomBytes 2048
+    key <- generateKeyPair RSA2048 (toLabel "key")
+    pub <- toPublicKey key
+    s   <- asymmetricSign key SHA2_512 msg
+    verifySignature pub s msg
 
   status @?= SignatureVerified
 
@@ -115,16 +116,16 @@ testMultipleKeys :: Assertion
 testMultipleKeys = do
   let value = 42 :: Int
 
-  Right (a, b) <- runCrypto' $ do
+  (a, b) <- runCrypto $ do
     keyA <- generateKey AES256 (toLabel "Key A")
     keyB <- generateKey AES256 (toLabel "Key B")
 
-    encA <- encrypt keyA value
-    decA <- decrypt keyA encA
+    encA <- encrypt' keyA value
+    decA <- decrypt' keyA encA
 
     -- Should fail to decode from Binary:
     decB <- catchError
-              (decrypt keyB encA >> return (value + 1))
+              (decrypt' keyB encA >> return (value + 1))
               (const (return value))
 
     return (decA, decB)

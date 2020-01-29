@@ -23,12 +23,11 @@ module Main (main) where
 
 --------------------------------------------------------------------------------
 -- Load in our dependencies:
-import Iolaus.Crypto
-import Iolaus.Crypto.Cryptonite
 import Control.Monad.IO.Class (MonadIO, liftIO)
+import qualified Data.Aeson as Aeson
 import qualified Data.ByteString.Char8 as ByteString
 import qualified Data.ByteString.Lazy.Char8 as LByteString
-import qualified Data.Aeson as Aeson
+import Iolaus.Crypto.Cryptonite
 
 --------------------------------------------------------------------------------
 -- | An example transformer stack.  You can add as many transformers
@@ -58,11 +57,11 @@ app = do
       number = 42 :: Int
 
   keyM <- fetchKey label
-  key  <- maybe (generateKey cipher label) return keyM
+  key  <- maybe (generateKey cipher label) pure keyM
 
   liftIO (putStrLn ("key file is: " <> ByteString.unpack (getLabel label)))
 
-  secretNumber <- encrypt key number
+  secretNumber <- encrypt' key number
   liftIO (LByteString.putStrLn (Aeson.encode secretNumber))
 
 --------------------------------------------------------------------------------

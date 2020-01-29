@@ -1,5 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-
 {-|
 
 Copyright:
@@ -72,10 +70,7 @@ decode = fmap Encoding .
 --------------------------------------------------------------------------------
 -- | Decode with failure.
 decodeM :: (MonadPlus m) => Text -> m Encoding
-decodeM t =
-  case decode t of
-    Nothing -> mzero
-    Just e  -> return e
+decodeM = maybe mzero return . decode
 
 --------------------------------------------------------------------------------
 -- | Normalize text so that it will hash the same way given different

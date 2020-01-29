@@ -1,10 +1,3 @@
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE StandaloneDeriving    #-}
-
 {-|
 
 Copyright:
@@ -69,16 +62,18 @@ import Opaleye
 
 --------------------------------------------------------------------------------
 -- Project Imports:
+import Control.Monad.Crypto
 import Iolaus.Crypto.Encoding (Encoding(..), normalize)
 import Iolaus.Crypto.Salt
-import Iolaus.Crypto.Monad
 
 --------------------------------------------------------------------------------
 -- | Settings to control the password hashing process.
 data Settings = Settings
   { iterations :: Natural -- ^ Number of iterations for the algorithm.
   , bytes      :: Natural -- ^ Size of the output in bytes.
-  } deriving (Generic, Eq, Ord, Show, FromJSON, ToJSON)
+  }
+  deriving stock    (Generic, Eq, Ord, Show)
+  deriving anyclass (FromJSON, ToJSON)
 
 --------------------------------------------------------------------------------
 -- | Default settings.

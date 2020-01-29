@@ -1,12 +1,3 @@
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE GADTs             #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections     #-}
-{-# LANGUAGE TypeFamilies      #-}
-
 {-|
 
 Copyright:
@@ -88,22 +79,22 @@ import Iolaus.Crypto.PEM
 --
 -- To store a public key in a file or transmit it over the network,
 -- use the 'encodePublicKey' function.
-newtype PublicKey = RSAPubKey (Algo, RSA.PublicKey)
+newtype PublicKey = RSAPubKey (Algo, Label, RSA.PublicKey)
   deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
 -- | Convert a 'PublicKey' to one that can be used in X509
 -- certificates.
 toX509PubKey :: PublicKey -> X509.PubKey
-toX509PubKey (RSAPubKey (_, k)) = X509.PubKeyRSA k
+toX509PubKey (RSAPubKey (_, _, k)) = X509.PubKeyRSA k
 
 --------------------------------------------------------------------------------
 -- | Convert a 'X509.PubKey' to a 'PublicKey'.
-fromX509PubKey :: X509.PubKey -> Maybe PublicKey
-fromX509PubKey = \case
+fromX509PubKey :: Label -> X509.PubKey -> Maybe PublicKey
+fromX509PubKey label = \case
   X509.PubKeyRSA k@(RSA.PublicKey n _ _)
-    | n == 256  -> Just (RSAPubKey (RSA2048, k))
-    | n == 512  -> Just (RSAPubKey (RSA4096, k))
+    | n == 256  -> Just (RSAPubKey (RSA2048, label, k))
+    | n == 512  -> Just (RSAPubKey (RSA4096, label, k))
     | otherwise -> Nothing
   _ -> Nothing
 
@@ -115,8 +106,10 @@ encodePublicKey = encodePEM . pure . toPEM PublicKeySection . toX509PubKey
 --------------------------------------------------------------------------------
 -- | Decode a public key that was encoded in PEM.  The first usable
 -- key found in the PEM stream is returned.
-decodePublicKey :: LBS.ByteString -> Maybe PublicKey
-decodePublicKey = (fromX509PubKey <=< listToMaybe) . concatMap fromPEM . decodePEM
+decodePublicKey :: Label -> LBS.ByteString -> Maybe PublicKey
+decodePublicKey label =
+  (fromX509PubKey label <=< listToMaybe) .
+    concatMap fromPEM . decodePEM
 
 --------------------------------------------------------------------------------
 -- | A label is a way to identify a key by a name.

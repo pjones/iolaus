@@ -1,6 +1,3 @@
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE TupleSections     #-}
-
 {-|
 
 Copyright:
@@ -21,7 +18,7 @@ Public Key Infrastructure and Certificate Authorities.
 In other words, a high-level wrapper around the X509 package.
 
 -}
-module Iolaus.Crypto.PKI
+module Iolaus.Crypto.CertAuth
   ( -- * A Monad for Certificate Authorities
     MonadCertAuth(..)
 
@@ -72,12 +69,11 @@ import qualified Data.X509 as X509
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Iolaus.Crypto.API
+import qualified Control.Monad.CertAuth as CA
+import Control.Monad.CertAuth (MonadCertAuth(..), CaOptF(..), CaOpt)
+import Control.Monad.Crypto
 import Iolaus.Crypto.Key
-import Iolaus.Crypto.Monad (MonadCrypto(..), KeyPair)
-import qualified Iolaus.Crypto.Monad as M
 import Iolaus.Crypto.PEM
-import Iolaus.Crypto.PKI.Monad
 import Iolaus.Crypto.Signature
 
 --------------------------------------------------------------------------------
@@ -132,7 +128,7 @@ signCert
      -- ^ The signed certificate.
 signCert key cert =
     X509.objectToSignedExactF
-      (fmap sigToX509 . liftCryptoOpt . M.asymmetricSign key hash) cert
+      (fmap sigToX509 . asymmetricSign key hash) cert
   where
     hash :: Hash
     hash = case fromX509SigAlg (certSignatureAlg cert) of
@@ -247,12 +243,12 @@ newLeafCert
   -> m (KeyPair k, SignedCertificate)
      -- ^ Private key and signed certificate.
 newLeafCert name uuid label validity f = do
-  issuer <- liftCaOpt fetchIntermediateCert
-  (hash, algo) <- liftCaOpt fetchHashAndAlgo
+  issuer <- fetchIntermediateCert
+  (hash, algo) <-  fetchHashAndAlgo
   key <- generateKeyPair algo label
   pub <- toPublicKey key
   let cert = newCert uuid name algo hash (Just issuer) validity pub
-  signed <- liftCaOpt (signWithIntermediateCert (f cert))
+  signed <- signWithIntermediateCert (f cert)
   return (key, signed)
 
 --------------------------------------------------------------------------------
@@ -268,8 +264,8 @@ certChain
      -- ^ Include this certificate at the end of the chain
   -> m LBS.ByteString
 certChain mcert = do
-  root <- liftCaOpt fetchRootCert
-  int  <- liftCaOpt fetchIntermediateCert
+  root <- fetchRootCert
+  int  <- fetchIntermediateCert
 
   return $ case mcert of
     Nothing -> go [root, int]
@@ -306,3 +302,28 @@ toSerialNumber uuid =
      fromIntegral w2 `shiftL` 64 .|.
      fromIntegral w3 `shiftL` 32 .|.
      fromIntegral w4
+
+--------------------------------------------------------------------------------
+-- | Yield the hashing and asymmetric encryption algorithms that
+-- should be used.
+fetchHashAndAlgo :: MonadCertAuth m => m (Hash, Algo)
+fetchHashAndAlgo = liftCaOpt CA.fetchHashAndAlgo
+
+--------------------------------------------------------------------------------
+-- | Yield the signed root certificate.
+fetchRootCert :: MonadCertAuth m => m SignedCertificate
+fetchRootCert = liftCaOpt CA.fetchRootCert
+
+--------------------------------------------------------------------------------
+-- | Yield the intermediate certificate that is currently active.
+-- Note that you may have to generate the certificate and sign it with
+-- the root certificate.
+fetchIntermediateCert :: MonadCertAuth m => m SignedCertificate
+fetchIntermediateCert = liftCaOpt CA.fetchIntermediateCert
+
+--------------------------------------------------------------------------------
+-- | Sign the given certificate using the active intermediate
+-- certificate.  Note that you may have to generate the intermediate
+-- certificate and sign it with the root certificate first.
+signWithIntermediateCert :: MonadCertAuth m => Certificate -> m SignedCertificate
+signWithIntermediateCert = liftCaOpt . CA.signWithIntermediateCert

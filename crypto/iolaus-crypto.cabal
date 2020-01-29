@@ -20,14 +20,47 @@ extra-source-files:
 
 --------------------------------------------------------------------------------
 common options
-  default-language: Haskell2010
-  ghc-options: -Wall
-               -Werror=incomplete-record-updates
-               -Werror=incomplete-uni-patterns
-               -Werror=missing-home-modules
-               -Widentities
-               -Wmissing-export-lists
-               -Wredundant-constraints
+  default-language:
+    Haskell2010
+
+  ghc-options:
+    -Wall
+    -Werror=incomplete-record-updates
+    -Werror=incomplete-uni-patterns
+    -Werror=missing-home-modules
+    -Widentities
+    -Wmissing-export-lists
+    -Wredundant-constraints
+
+--------------------------------------------------------------------------------
+common extensions
+  default-extensions:
+    ConstraintKinds
+    DataKinds
+    DefaultSignatures
+    DeriveAnyClass
+    DeriveFunctor
+    DeriveGeneric
+    DerivingVia
+    ExistentialQuantification
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GeneralisedNewtypeDeriving
+    LambdaCase
+    MultiParamTypeClasses
+    MultiWayIf
+    NamedFieldPuns
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
 
 --------------------------------------------------------------------------------
 common dependencies
@@ -62,25 +95,26 @@ common dependencies
 
 --------------------------------------------------------------------------------
 library
-  import: options, dependencies
+  import: options, extensions, dependencies
   hs-source-dirs: src
 
   exposed-modules:
     Iolaus.Crypto
     Iolaus.Crypto.PEM
     Iolaus.Crypto.Cryptonite
-    Iolaus.Crypto.Monad
-    Iolaus.Crypto.PKI
+    Iolaus.Crypto.CertAuth
 
   other-modules:
-    Iolaus.Crypto.API
+    Control.Monad.CertAuth
+    Control.Monad.Crypto
+    Control.Monad.Crypto.Internal
+    Control.Monad.Crypto.KeyAccess
     Iolaus.Crypto.Cryptonite.Asymmetric
     Iolaus.Crypto.Cryptonite.Symmetric
     Iolaus.Crypto.Encoding
     Iolaus.Crypto.Error
     Iolaus.Crypto.HashedSecret
     Iolaus.Crypto.Key
-    Iolaus.Crypto.PKI.Monad
     Iolaus.Crypto.Password
     Iolaus.Crypto.Salt
     Iolaus.Crypto.SaltedHash
@@ -96,7 +130,7 @@ executable symmetric
 
 --------------------------------------------------------------------------------
 test-suite test
-  import: options, dependencies
+  import: options, extensions, dependencies
   type: exitcode-stdio-1.0
   hs-source-dirs: test
   main-is: Main.hs

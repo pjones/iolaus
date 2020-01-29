@@ -1,11 +1,3 @@
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE NamedFieldPuns      #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 {-|
 
 Copyright:
@@ -129,12 +121,12 @@ toRSAPrivateKey key@RSAKeyPair{..} =
 --------------------------------------------------------------------------------
 -- | Internal key type.
 data AsymmetricKey
-  = AKRSA Algo RSAKeyPair
+  = AKRSA Algo Label RSAKeyPair
   deriving (Generic, Binary)
 
 instance AsyAlgo AsymmetricKey where
   keySizeBytes = \case
-    AKRSA algo _ -> keySizeBytes algo
+    AKRSA algo _ _ -> keySizeBytes algo
 
 --------------------------------------------------------------------------------
 -- | Recreate a key from a 'ByteString'.
@@ -149,34 +141,34 @@ fromKey = LBS.toStrict . Binary.encode
 --------------------------------------------------------------------------------
 toX509PrivKey :: AsymmetricKey -> X509.PrivKey
 toX509PrivKey = \case
-  AKRSA _ k -> X509.PrivKeyRSA (toRSAPrivateKey k)
+  AKRSA _ _ k -> X509.PrivKeyRSA (toRSAPrivateKey k)
 
 --------------------------------------------------------------------------------
-fromX509PrivKey :: X509.PrivKey -> Maybe AsymmetricKey
-fromX509PrivKey = \case
+fromX509PrivKey :: Label -> X509.PrivKey -> Maybe AsymmetricKey
+fromX509PrivKey label = \case
   X509.PrivKeyRSA k
-    | RSA.private_size k == 256  -> Just (AKRSA RSA2048 (fromRSAPrivateKey k))
-    | RSA.private_size k == 512  -> Just (AKRSA RSA4096 (fromRSAPrivateKey k))
+    | RSA.private_size k == 256  -> Just (AKRSA RSA2048 label (fromRSAPrivateKey k))
+    | RSA.private_size k == 512  -> Just (AKRSA RSA4096 label (fromRSAPrivateKey k))
     | otherwise -> Nothing
   _ -> Nothing
 
 --------------------------------------------------------------------------------
 -- | Asymmetric key generation.
-generateKeyPair :: (MonadRandom m) => Algo -> m AsymmetricKey
-generateKeyPair algo =
+generateKeyPair :: (MonadRandom m) => Algo -> Label -> m AsymmetricKey
+generateKeyPair algo label =
   case algo of
     RSA2048 -> genRSA
     RSA4096 -> genRSA
 
   where
     genRSA =
-      AKRSA algo . fromRSAPrivateKey . snd <$>
-      RSA.generate (keySizeBytes algo) 65537
+      AKRSA algo label . fromRSAPrivateKey . snd <$>
+        RSA.generate (keySizeBytes algo) 65537
 
 --------------------------------------------------------------------------------
 toPublicKey :: AsymmetricKey -> PublicKey
 toPublicKey = \case
-  AKRSA algo rsa -> RSAPubKey (algo, toRSAPublicKey rsa)
+  AKRSA algo label rsa -> RSAPubKey (algo, label, toRSAPublicKey rsa)
 
 --------------------------------------------------------------------------------
 -- | Asymmetric encryption.
@@ -186,19 +178,15 @@ encrypt
      , MonadError e m
      , AsCryptoError e
      )
-  => Label
-  -> PublicKey
+  => PublicKey
   -> ByteString
   -> m (Secret ByteString)
-encrypt label = \case
-  RSAPubKey (algo, rsa) -> encryptRSA algo rsa
+encrypt = \case
+  RSAPubKey (algo, label, rsa) -> \val -> do
+    bs <- chunkM (chunkSize algo) val (chunkRSA rsa) mempty
+    return (Secret (LBS.toStrict (Builder.toLazyByteString bs)) Nothing label)
 
   where
-    encryptRSA :: Algo -> RSA.PublicKey -> ByteString -> m (Secret ByteString)
-    encryptRSA algo pub val = do
-      bs <- chunkM (chunkSize algo) val (chunkRSA pub) mempty
-      return (Secret (LBS.toStrict (Builder.toLazyByteString bs)) Nothing label)
-
     chunkRSA :: RSA.PublicKey -> Builder -> ByteString -> m Builder
     chunkRSA key enc bs = do
       enc' <- liftRSAError =<< RSA.encrypt key bs
@@ -215,7 +203,7 @@ decrypt
   -> Secret ByteString
   -> m ByteString
 decrypt = \case
-  AKRSA algo rsa -> decryptRSA algo rsa
+  AKRSA algo _ rsa -> decryptRSA algo rsa
 
   where
     decryptRSA :: Algo -> RSAKeyPair -> Secret ByteString -> m ByteString
@@ -247,15 +235,15 @@ sign
   -> ByteString
   -> m (Signature ByteString)
 sign = \case
-  AKRSA algo rsa -> signRSA algo rsa
+  AKRSA algo _ rsa -> signRSA algo rsa
 
   where
     signRSA :: Algo -> RSAKeyPair -> Hash -> ByteString -> m (Signature ByteString)
     signRSA algo key hash val = do
       binder <- RSA.generateBlinder (rsaN key)
       let priv = toRSAPrivateKey key
-          go h = liftRSAError (RSA.sign (Just binder) (Just h) priv val)
-      sig <- withHashAlgo hash go
+          go = withHashAlgo hash (\h -> RSA.sign (Just binder) (Just h) priv val)
+      sig <- liftRSAError go
       return (Signature sig algo hash)
 
 --------------------------------------------------------------------------------
@@ -266,13 +254,12 @@ verify
   -> ByteString
   -> m SigStatus
 verify = \case
-  RSAPubKey (_, rsa) -> verifyRSA rsa
+  RSAPubKey (_, _, rsa) -> verifyRSA rsa
 
   where
     verifyRSA :: RSA.PublicKey -> Signature ByteString -> ByteString -> m SigStatus
-    verifyRSA key (Signature sig _ hash) val = do
-      let go h = RSA.verify (Just h) key val sig
-      if withHashAlgo hash go
+    verifyRSA key (Signature sig _ hash) val =
+      if withHashAlgo hash (\h -> RSA.verify (Just h) key val sig)
         then return SignatureVerified
         else return SignatureMismatch
 

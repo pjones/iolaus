@@ -26,8 +26,7 @@ import Data.ByteString (ByteString)
 import Data.IORef
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Iolaus.Crypto
-import Iolaus.Crypto.Monad
+import Iolaus.Crypto.Cryptonite
 
 --------------------------------------------------------------------------------
 type Table = Map (Label, FileExtension) ByteString

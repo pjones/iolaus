@@ -1,8 +1,3 @@
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE TemplateHaskell            #-}
-
 {-|
 
 Copyright:
@@ -24,8 +19,8 @@ Salt: random data mixed with a password to secure it while in rest
 -}
 module Iolaus.Crypto.Salt
   ( Salt
-  , SharedSalt(..)
   , getSalt
+  , SharedSalt(..)
   , recommendedSaltLen
   , generateSalt
   , generateSalt'
@@ -48,11 +43,13 @@ import Opaleye.SqlTypes (SqlBytea)
 import Iolaus.Crypto.Encoding (Encoding(..))
 import qualified Iolaus.Crypto.Encoding as Encoding
 import Iolaus.Crypto.Error (CryptoError(..))
-import Iolaus.Crypto.Monad
+import Control.Monad.Crypto
 
 --------------------------------------------------------------------------------
 -- | A binary salt that should only be used for a single secret.
-newtype Salt = Salt { getSalt :: ByteString } deriving Eq
+newtype Salt = Salt
+  { getSalt :: ByteString -- ^ Access the raw bytes of a salt.
+  } deriving Eq
 
 makeNewtypeInstances ''Salt ''SqlBytea
 
@@ -91,7 +88,7 @@ generateSalt = generateSalt' recommendedSaltLen
 -- Attempting to generate fewer bytes than the recommended length will
 -- automatically upgrade the length to the recommended value.
 generateSalt' :: (MonadCrypto k m) => Int -> m Salt
-generateSalt' = fmap Salt . liftCryptoOpt . generateRandom . max recommendedSaltLen
+generateSalt' = fmap Salt . generateRandomBytes . max recommendedSaltLen
 
 --------------------------------------------------------------------------------
 -- | Encode salt for writing to a safe location.

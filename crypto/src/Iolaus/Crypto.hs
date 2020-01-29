@@ -14,59 +14,81 @@ Copyright:
 License: BSD-2-Clause
 
 -}
-module Iolaus.Crypto (
-  -- * A Monad for Cryptography
-  MonadCrypto,
-  Key,
-  KeyPair,
+module Iolaus.Crypto
+  (
+    -- * A Class of Monads for Cryptography
+    MonadCrypto
+  , Key
+  , KeyPair
 
-  -- * Core Symmetric Cryptography Operations
-  generateRandom,
-  generateKey,
-  fetchKey,
-  encrypt,
-  decrypt,
+    -- * Random Bytes
+  , generateRandomBytes
 
-  -- * Core Asymmetric Cryptography Operations
-  generateKeyPair,
-  fetchKeyPair,
-  toPublicKey,
-  asymmetricEncrypt,
-  asymmetricDecrypt,
-  asymmetricSign,
-  verifySignature,
+    -- * Symmetric Primitives
+  , generateKey
+  , fetchKey
+  , encrypt
+  , encrypt'
+  , decrypt
+  , decrypt'
 
-  -- * Passwords and Salts
-  module Iolaus.Crypto.Password,
-  module Iolaus.Crypto.Salt,
+    -- * Asymmetric Primitives
+  , generateKeyPair
+  , fetchKeyPair
+  , toPublicKey
+  , asymmetricEncrypt
+  , asymmetricEncrypt'
+  , asymmetricDecrypt
+  , asymmetricDecrypt'
+  , asymmetricSign
+  , asymmetricSign'
+  , verifySignature
+  , verifySignature'
 
-  -- * Salting, Hashing, and Encrypting
-  module Iolaus.Crypto.SaltedHash,
-  module Iolaus.Crypto.HashedSecret,
+    -- * Passwords and Salts
+  , module Iolaus.Crypto.Password
+  , module Iolaus.Crypto.Salt
 
-  -- * Ancillary Types and Functions
-  Secret, secretBytes, secretMAC, secretLabel,
-  Signature(..), SigStatus(..),
-  Label, toLabel, getLabel, getLabelText,
+    -- * Salting, Hashing, and Encrypting
+  , module Iolaus.Crypto.SaltedHash
+  , module Iolaus.Crypto.HashedSecret
 
-  -- * Public and Private Keys
-  PublicKey, encodePublicKey, decodePublicKey,
-  HasKeyAccess(..),
+    -- * Public Keys
+  , PublicKey
+  , encodePublicKey
+  , decodePublicKey
 
-  Cipher(..),
-  Algo(..),
-  Hash(..),
+    -- * Private Keys
+  , MonadKeyAccess
+  , encodeKey
+  , decodeKey
+  , encodePrivateKey
+  , decodePrivateKey
 
-  module Iolaus.Crypto.Error,
+    -- * Ancillary Types and Functions
+  , Secret
+  , secretBytes
+  , secretMAC
+  , secretLabel
+  , Signature(..)
+  , SigStatus(..)
+  , Label
+  , toLabel
+  , getLabel
+  , getLabelText
+  , Cipher(..)
+  , Algo(..)
+  , Hash(..)
+
+  , module Iolaus.Crypto.Error
   ) where
 
 --------------------------------------------------------------------------------
 -- Package Imports:
-import Iolaus.Crypto.API
+import Control.Monad.Crypto
 import Iolaus.Crypto.Error (CryptoError(..), AsCryptoError(..))
 import Iolaus.Crypto.HashedSecret
 import Iolaus.Crypto.Key
-import Iolaus.Crypto.Monad (MonadCrypto(..), Key, KeyPair, HasKeyAccess(..))
 import Iolaus.Crypto.Password
 import Iolaus.Crypto.Salt
 import Iolaus.Crypto.SaltedHash
