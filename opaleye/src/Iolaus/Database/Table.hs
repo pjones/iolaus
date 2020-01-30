@@ -100,6 +100,11 @@ module Iolaus.Database.Table
 
     -- * Template Haskell Functions
   , makeTable
+
+    -- * Re-exports
+  , module Opaleye.SqlTypes
+  , module Data.Int
+  , module Data.UUID
   ) where
 
 --------------------------------------------------------------------------------

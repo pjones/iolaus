@@ -27,7 +27,6 @@ module Iolaus.Test.Table
 import Data.Int (Int64)
 import Data.Text (Text)
 import Iolaus.Database.Table
-import Opaleye.SqlTypes
 import Test.Tasty
 import Test.Tasty.HUnit
 

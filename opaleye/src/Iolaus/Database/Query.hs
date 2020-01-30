@@ -33,7 +33,7 @@ module Iolaus.Database.Query
 
 --------------------------------------------------------------------------------
 import Iolaus.Database.Query.Internal
-import Opaleye.Operators
+import Opaleye.Operators hiding (not)
 import Opaleye.Order
 
 import Opaleye

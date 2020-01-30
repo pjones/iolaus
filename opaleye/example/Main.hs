@@ -28,12 +28,10 @@ module Main (main) where
 -- Imports:
 import Control.Monad.Database
 import Control.Monad.Except
-import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Iolaus.Database.Table
 import List.Transformer (ListT(..), Step(..))
-import Opaleye.SqlTypes (SqlText, SqlInt8)
 import System.Environment (getEnv)
 import System.FilePath ((</>))
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout)
