@@ -62,7 +62,7 @@ import Opaleye
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Control.Monad.Crypto
+import Control.Monad.Crypto.Class
 import Iolaus.Crypto.Encoding (Encoding(..), normalize)
 import Iolaus.Crypto.Salt
 

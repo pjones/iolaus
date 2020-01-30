@@ -16,7 +16,7 @@ Copyright:
 License: BSD-2-Clause
 
 -}
-module Control.Monad.CertAuth
+module Control.Monad.CertAuth.Internal
   ( CaOpt
   , CaOptF(..)
   , MonadCertAuth(..)

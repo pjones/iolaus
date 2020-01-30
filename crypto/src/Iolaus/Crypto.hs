@@ -13,6 +13,14 @@ Copyright:
 
 License: BSD-2-Clause
 
+This module pulls in the 'MonadCrypto' class and all of the types and
+functions that make up the package.  It does not import a concrete
+implementation of the 'MonadCrypto' class.
+
+For that, import on of these modules:
+
+  * "Control.Monad.Crypto.Cryptonite"
+
 -}
 module Iolaus.Crypto
   (
@@ -80,15 +88,27 @@ module Iolaus.Crypto
   , Algo(..)
   , Hash(..)
 
+    -- * PEM Encoding and Decoding
+  , SectionLabel(..)
+  , toPEM
+  , toPEM'
+  , fromPEM
+  , fromPEM'
+  , encodePEM
+  , decodePEM
+  , decodePEM'
+
+    -- * Error Handling
   , module Iolaus.Crypto.Error
   ) where
 
 --------------------------------------------------------------------------------
 -- Package Imports:
-import Control.Monad.Crypto
+import Control.Monad.Crypto.Class
 import Iolaus.Crypto.Error (CryptoError(..), AsCryptoError(..))
 import Iolaus.Crypto.HashedSecret
 import Iolaus.Crypto.Key
+import Iolaus.Crypto.PEM
 import Iolaus.Crypto.Password
 import Iolaus.Crypto.Salt
 import Iolaus.Crypto.SaltedHash

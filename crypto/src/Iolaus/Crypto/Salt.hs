@@ -43,7 +43,7 @@ import Opaleye.SqlTypes (SqlBytea)
 import Iolaus.Crypto.Encoding (Encoding(..))
 import qualified Iolaus.Crypto.Encoding as Encoding
 import Iolaus.Crypto.Error (CryptoError(..))
-import Control.Monad.Crypto
+import Control.Monad.Crypto.Class
 
 --------------------------------------------------------------------------------
 -- | A binary salt that should only be used for a single secret.

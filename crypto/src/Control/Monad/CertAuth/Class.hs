@@ -18,8 +18,8 @@ Public Key Infrastructure and Certificate Authorities.
 In other words, a high-level wrapper around the X509 package.
 
 -}
-module Iolaus.Crypto.CertAuth
-  ( -- * A Monad for Certificate Authorities
+module Control.Monad.CertAuth.Class
+  ( -- * A Monad Class for Certificate Authorities
     MonadCertAuth(..)
 
     -- * Functions for Implementing a Certificate Authority
@@ -69,9 +69,9 @@ import qualified Data.X509 as X509
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import qualified Control.Monad.CertAuth as CA
-import Control.Monad.CertAuth (MonadCertAuth(..), CaOptF(..), CaOpt)
-import Control.Monad.Crypto
+import qualified Control.Monad.CertAuth.Internal as CA
+import Control.Monad.CertAuth.Internal (MonadCertAuth(..), CaOptF(..), CaOpt)
+import Control.Monad.Crypto.Class
 import Iolaus.Crypto.Key
 import Iolaus.Crypto.PEM
 import Iolaus.Crypto.Signature

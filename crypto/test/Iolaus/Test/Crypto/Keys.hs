@@ -21,12 +21,12 @@ module Iolaus.Test.Crypto.Keys
   ) where
 
 --------------------------------------------------------------------------------
+import Control.Monad.Crypto.Cryptonite
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.ByteString (ByteString)
 import Data.IORef
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Iolaus.Crypto.Cryptonite
 
 --------------------------------------------------------------------------------
 type Table = Map (Label, FileExtension) ByteString

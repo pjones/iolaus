@@ -23,11 +23,11 @@ module Main (main) where
 
 --------------------------------------------------------------------------------
 -- Load in our dependencies:
+import Control.Monad.Crypto.Cryptonite
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Data.Aeson as Aeson
 import qualified Data.ByteString.Char8 as ByteString
 import qualified Data.ByteString.Lazy.Char8 as LByteString
-import Iolaus.Crypto.Cryptonite
 
 --------------------------------------------------------------------------------
 -- | An example transformer stack.  You can add as many transformers

@@ -31,7 +31,7 @@ import Test.Tasty.HUnit
 
 --------------------------------------------------------------------------------
 -- Package Imports:
-import Iolaus.Crypto.Cryptonite
+import Control.Monad.Crypto.Cryptonite
 import Iolaus.Test.Crypto.Keys
 
 --------------------------------------------------------------------------------

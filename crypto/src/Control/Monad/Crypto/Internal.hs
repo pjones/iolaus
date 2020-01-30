@@ -42,6 +42,7 @@ module Control.Monad.Crypto.Internal
 
 --------------------------------------------------------------------------------
 -- Library Imports:
+import Control.Monad.Database (DatabaseT)
 import Control.Monad.Free.Church (MonadFree(..), F, liftF)
 import Control.Monad.Free.TH (makeFree)
 import Data.ByteString (ByteString)
@@ -91,6 +92,7 @@ instance MonadCrypto k m => MonadCrypto k (SState.StateT s m)
 instance MonadCrypto k m => MonadCrypto k (ReaderT r m)
 instance MonadCrypto k m => MonadCrypto k (IdentityT m)
 instance MonadCrypto k m => MonadCrypto k (ContT r m)
+instance MonadCrypto k m => MonadCrypto k (DatabaseT m)
 
 --------------------------------------------------------------------------------
 -- | Primitive cryptographic operations as a Free Monad.

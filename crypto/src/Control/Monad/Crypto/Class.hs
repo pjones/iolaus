@@ -13,15 +13,19 @@ Copyright:
 
 License: BSD-2-Clause
 
+The 'MonadCrypto' class and helper functions.
+
 -}
-module Control.Monad.Crypto
-  (
+module Control.Monad.Crypto.Class
+  ( -- * MonadCrypto
     MonadCrypto
   , Key
   , KeyPair
 
+    -- * Random Bytes
   , generateRandomBytes
 
+    -- * Symmetric Primitives
   , generateKey
   , fetchKey
   , encrypt
@@ -29,6 +33,7 @@ module Control.Monad.Crypto
   , decrypt
   , decrypt'
 
+    -- * Asymmetric Primitives
   , generateKeyPair
   , fetchKeyPair
   , toPublicKey
@@ -41,6 +46,7 @@ module Control.Monad.Crypto
   , verifySignature
   , verifySignature'
 
+    -- * Private Keys
   , MonadKeyAccess
   , encodeKey
   , decodeKey

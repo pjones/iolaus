@@ -1,17 +1,30 @@
 cabal-version:       2.2
 
 --------------------------------------------------------------------------------
-name:                iolaus-crypto
-version:             0.1.0.0
-synopsis:            Easy to use cryptography library loosely based on PKCS#11
-description:         Please see the README.md file.
-license:             BSD-2-Clause
-license-file:        LICENSE
-author:              Peter Jones <pjones@devalot.com>
-maintainer:          Peter Jones <pjones@devalot.com>
-copyright:           Copyright (c) 2019 Peter Jones
-category:            Application
--- bug-reports:
+name:         iolaus-crypto
+version:      0.1.0.0
+synopsis:     Easy to use cryptography library loosely based on PKCS#11
+license:      BSD-2-Clause
+license-file: LICENSE
+author:       Peter Jones <pjones@devalot.com>
+maintainer:   Peter Jones <pjones@devalot.com>
+copyright:    Copyright (c) 2019-2020 Peter Jones
+homepage:     https://github.com/pjones/iolaus
+bug-reports:  https://github.com/pjones/iolaus/issues
+category:     Application
+
+--------------------------------------------------------------------------------
+description:
+  Loosely based on the PKCS#11 API, this package provides a Classy
+  MTL-style interface for cryptography along with a collection of
+  useful types and functions (such as 'Password' and 'Salt').
+  .
+  To start, you probably want to review the "Iolaus.Crypto" module
+  which includes the 'MonadCrypto' class and the collection of types
+  mentioned above.
+  .
+  For software-based cryptography, take a look at the "Control.Monad.Crypto.Cryptonite"
+  module and the <https://github.com/pjones/iolaus/blob/master/crypto/examples examples>.
 
 --------------------------------------------------------------------------------
 extra-source-files:
@@ -99,14 +112,13 @@ library
   hs-source-dirs: src
 
   exposed-modules:
+    Control.Monad.CertAuth.Class
+    Control.Monad.Crypto.Class
+    Control.Monad.Crypto.Cryptonite
     Iolaus.Crypto
-    Iolaus.Crypto.PEM
-    Iolaus.Crypto.Cryptonite
-    Iolaus.Crypto.CertAuth
 
   other-modules:
-    Control.Monad.CertAuth
-    Control.Monad.Crypto
+    Control.Monad.CertAuth.Internal
     Control.Monad.Crypto.Internal
     Control.Monad.Crypto.KeyAccess
     Iolaus.Crypto.Cryptonite.Asymmetric
@@ -115,6 +127,7 @@ library
     Iolaus.Crypto.Error
     Iolaus.Crypto.HashedSecret
     Iolaus.Crypto.Key
+    Iolaus.Crypto.PEM
     Iolaus.Crypto.Password
     Iolaus.Crypto.Salt
     Iolaus.Crypto.SaltedHash

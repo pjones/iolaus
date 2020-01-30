@@ -15,9 +15,13 @@ Copyright:
 
 License: BSD-2-Clause
 
+This module provides the 'CryptoniteT' monad transformer which
+implements the 'MonadCrypto' class.
+
 -}
-module Iolaus.Crypto.Cryptonite
-  ( CryptoniteT
+module Control.Monad.Crypto.Cryptonite
+  ( -- * CryptoniteT
+    CryptoniteT
   , Cryptonite
   , fileManager
   , initCryptoniteT
@@ -29,6 +33,7 @@ module Iolaus.Crypto.Cryptonite
   , FileExtension(..)
   , GetStatus(..)
   , PutStatus(..)
+  , module Control.Monad.Crypto.Class
   , module Iolaus.Crypto
   ) where
 
@@ -36,6 +41,7 @@ module Iolaus.Crypto.Cryptonite
 -- Library Imports:
 import Control.Lens (view)
 import Control.Lens.TH (makeClassy)
+import Control.Monad.Database.Class (MonadDatabase)
 import Control.Monad.Error.Lens (throwing)
 import Control.Monad.Free.Church (runF)
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -54,15 +60,24 @@ import Control.Monad.State.Class
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Control.Monad.CertAuth
-import Control.Monad.Crypto.Internal
+import Control.Monad.CertAuth.Internal
+import Control.Monad.Crypto.Class
 import Control.Monad.Crypto.KeyAccess
 import Iolaus.Crypto
 import Iolaus.Crypto.Cryptonite.Asymmetric as Asymmetric
 import Iolaus.Crypto.Cryptonite.Symmetric as Symmetric
 import Iolaus.Crypto.Error
 import Iolaus.Crypto.Key (fileManager)
-import Iolaus.Crypto.PEM
+
+import Control.Monad.Crypto.Internal
+  ( MonadCrypto(..)
+  , CryptoOpt
+  , CryptoOptF(..)
+  , KeyManager(..)
+  , FileExtension(..)
+  , GetStatus(..)
+  , PutStatus(..)
+  )
 
 --------------------------------------------------------------------------------
 -- | Save me some typing.
@@ -89,6 +104,7 @@ newtype RandomT m a = RandomT
                    , MonadState s
                    , MonadCont
                    , MonadCertAuth
+                   , MonadDatabase
                    )
 
 runRandomT :: RNG -> RandomT m a -> m a
@@ -122,6 +138,7 @@ newtype CryptoniteT m a = CryptoniteT
                    , MonadState s
                    , MonadCont
                    , MonadCertAuth
+                   , MonadDatabase
                    )
 
 --------------------------------------------------------------------------------

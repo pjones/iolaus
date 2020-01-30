@@ -39,7 +39,7 @@ import Opaleye
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Control.Monad.Crypto
+import Control.Monad.Crypto.Class
 import Iolaus.Crypto.Salt
 import Iolaus.Crypto.SaltedHash
 import Iolaus.Crypto.Secret
