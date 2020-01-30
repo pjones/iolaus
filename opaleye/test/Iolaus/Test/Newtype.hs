@@ -34,7 +34,7 @@ import Data.Int (Int64)
 import Data.Profunctor.Product.TH (makeAdaptorAndInstance)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import qualified Iolaus.Database as DB
+import qualified Control.Monad.Database as DB
 import Iolaus.Database.Newtype (makeNewtypeInstances)
 import Opaleye (Table, Field, table, tableField)
 import qualified Opaleye as O

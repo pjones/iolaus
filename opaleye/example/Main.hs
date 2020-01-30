@@ -26,10 +26,8 @@ module Main (main) where
 
 --------------------------------------------------------------------------------
 -- Imports:
-import Control.Carrier.Database
-import Control.Carrier.Lift
-import Control.Carrier.Throw.Either
-import Data.Function ((&))
+import Control.Monad.Database
+import Control.Monad.Except
 import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as Text
@@ -65,8 +63,12 @@ makeTable ''Person "people"
 
 --------------------------------------------------------------------------------
 -- | Insert a new person into the database.
-createNewPerson :: (Has Database sig m, Has (Throw DbError) sig m)
-                => Text -> Text -> m ()
+createNewPerson
+  :: ( MonadDatabase m
+     , MonadError  e m
+     , AsDbError   e
+     )
+  => Text -> Text -> m ()
 createNewPerson fn ln = do
   let p = Person Nothing (toFields fn) (toFields ln)
   _ <- runQuery (insert (Insert people [p] rCount Nothing))
@@ -74,20 +76,25 @@ createNewPerson fn ln = do
 
 --------------------------------------------------------------------------------
 -- | Example running a database SELECT.
-fetchEveryone :: (Has Database sig m, Has (Throw DbError) sig m)
-              => m [Person ForHask]
+fetchEveryone
+  :: ( MonadDatabase m
+     , MonadError  e m
+     , AsDbError   e
+     )
+  => m [Person ForHask]
 fetchEveryone = runQuery (select (selectTable people))
 
 --------------------------------------------------------------------------------
 printEveryoneStreaming
-  :: ( Has Database sig m
-     , Has (Throw DbError) sig m
-     , Has (Lift IO) sig m
+  :: ( MonadIO       m
+     , MonadDatabase m
+     , MonadError  e m
+     , AsDbError   e
      )
   => m ()
 printEveryoneStreaming = do
     list <- runQuery (selectToStream (selectTable people))
-    sendM (loop list)
+    liftIO (loop list)
   where
     loop :: ListT IO (Person ForHask) -> IO ()
     loop list = do
@@ -101,32 +108,39 @@ printEveryoneStreaming = do
 
 --------------------------------------------------------------------------------
 -- | Example of counting matching rows.
-numberOfPeople :: (Has Database sig m, Has (Throw DbError) sig m) => m Int64
+numberOfPeople
+  :: ( MonadDatabase m
+     , MonadError  e m
+     , AsDbError   e
+     )
+  => m Int64
 numberOfPeople = runQuery (count (selectTable people))
 
 --------------------------------------------------------------------------------
-app :: ( Has Database sig m
-       , Has (Throw DbError) sig m
-       , Has (Lift IO) sig m
-       )
-    => m ()
+app
+  :: ( MonadIO       m
+     , MonadDatabase m
+     , MonadError  e m
+     , AsDbError   e
+     )
+  => m ()
 app = do
-  schemaDir <- (</> "example" </> "schema") <$> sendM getDataDir
-  migrate schemaDir MigrateVerbosely >>= sendM . print
+  schemaDir <- (</> "example" </> "schema") <$> liftIO getDataDir
+  migrate schemaDir MigrateVerbosely >>= liftIO . print
 
-  fn <- Text.pack <$> sendM (putStr "Enter your given/first name: "   >> getLine)
-  ln <- Text.pack <$> sendM (putStr "And now your family/last name: " >> getLine)
+  fn <- Text.pack <$> liftIO (putStr "Enter your given/first name: "   >> getLine)
+  ln <- Text.pack <$> liftIO (putStr "And now your family/last name: " >> getLine)
 
   createNewPerson fn ln
 
-  sendM (putStrLn "Fetching all rows as once: ")
-  fetchEveryone >>= mapM_ (sendM . print)
+  liftIO (putStrLn "Fetching all rows as once: ")
+  fetchEveryone >>= mapM_ (liftIO . print)
 
-  sendM (putStrLn "Streaming the entire table row by row: ")
+  liftIO (putStrLn "Streaming the entire table row by row: ")
   printEveryoneStreaming
 
   n <- numberOfPeople
-  sendM (putStrLn ("Number of records in the table: " <> show n))
+  liftIO (putStrLn ("Number of records in the table: " <> show n))
 
 --------------------------------------------------------------------------------
 main :: IO ()
@@ -151,7 +165,7 @@ main = do
   hSetBuffering stdout NoBuffering
 
   -- Run the app by discharging all of the effects.
-  result <- app & runDatabase runtime & runThrow & runM
+  result <- runExceptT (runDatabaseT runtime app)
 
   -- Print out the result (which should be @Right ()@) and the EKG store:
   print (result :: Either DbError ())

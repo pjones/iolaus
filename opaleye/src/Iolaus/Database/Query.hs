@@ -26,8 +26,6 @@ module Iolaus.Database.Query
   , insert1
   , update
   , delete
-
-    -- * Re-exports
   , module Opaleye
   , module Opaleye.Operators
   , module Opaleye.Order

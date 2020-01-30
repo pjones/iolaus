@@ -1,4 +1,4 @@
- {-|
+{-|
 
 Copyright:
   This file is part of the package iolaus.  It is subject to the
@@ -13,68 +13,48 @@ Copyright:
 
 License: BSD-2-Clause
 
+An effect that provides access to a PostgreSQL database.
+
+For a concrete implementation of the 'MonadDatabase' class please see
+"Control.Monad.Database".
+
 -}
-module Control.Effect.Database.Internal
-  ( Database(..)
-  , runQueryEither
+module Control.Monad.Database.Class
+  (
+    -- * Database Class
+    MonadDatabase
+
+    -- * Running Queries Outside a Transaction
   , runQuery
-  , transactionEither
+  , runQueryEither
+
+    -- * Running Queries Inside a Transaction
   , transaction
-  , transactionEitherWith
+  , transactionEither
   , transactionWith
+  , transactionEitherWith
   , rollback
+
+    -- * Schema Migrations
   , migrate
   , migrationTableExists
   ) where
 
-
 --------------------------------------------------------------------------------
-import Control.Algebra
-import Control.Effect.Throw
+-- Library Imports:
+import Control.Lens ((#))
 import Control.Monad ((<=<))
-import Database.PostgreSQL.Simple.Transaction (TransactionMode)
+import Control.Monad.Except
 import qualified Database.PostgreSQL.Simple.Transaction as PostgreSQL
+import Database.PostgreSQL.Simple.Transaction hiding (rollback)
 
 --------------------------------------------------------------------------------
+-- Package Imports:
+import qualified Control.Monad.Database.Internal as M
+import Control.Monad.Database.Internal (MonadDatabase(..))
 import Iolaus.Database.Error
-import Iolaus.Database.Migrate (MigrationVerbosity, MigrationResult)
-import Iolaus.Database.Query.Internal (Query)
-
---------------------------------------------------------------------------------
--- | Actions that can be taken with a database connection.
---
--- @since 0.1.0.0
-data Database m k
-  = forall a .
-    RunQuery (Query a) (Either DbError a -> m k)
-
-  | forall a .
-    Transaction TransactionMode (Query a) (Either DbError a -> m k)
-
-  | forall a .
-    ThrowRollback (a -> m k)
-
-  | Migrate FilePath MigrationVerbosity (MigrationResult String -> m k)
-
-  | MigrationTableExists (Bool -> m k)
-
-deriving instance Functor m => Functor (Database m)
-
-instance HFunctor Database where
-  hmap f = \case
-    RunQuery q k           -> RunQuery q (f . k)
-    Transaction t q k      -> Transaction t q (f . k)
-    ThrowRollback k        -> ThrowRollback (f . k)
-    Migrate p v k          -> Migrate p v (f . k)
-    MigrationTableExists k -> MigrationTableExists (f . k)
-
-instance Effect Database where
-  thread ctx handler = \case
-    RunQuery q k           -> RunQuery q (handler . (<$ ctx) . k)
-    Transaction t q k      -> Transaction t q (handler . (<$ ctx) . k)
-    ThrowRollback k        -> ThrowRollback (handler . (<$ ctx) . k)
-    Migrate p v k          -> Migrate p v (handler . (<$ ctx) . k)
-    MigrationTableExists k -> MigrationTableExists (handler . (<$ ctx) . k)
+import Iolaus.Database.Migrate (MigrationVerbosity(..), MigrationResult(..))
+import Iolaus.Database.Query
 
 --------------------------------------------------------------------------------
 -- | Execute a query and use 'Either' to encode errors.
@@ -87,8 +67,8 @@ instance Effect Database where
 -- For more information see "Iolaus.Database".
 --
 -- @since 0.1.0.0
-runQueryEither :: Has Database sig m => Query a -> m (Either DbError a)
-runQueryEither q = send (RunQuery q pure)
+runQueryEither :: MonadDatabase m => Query a -> m (Either DbError a)
+runQueryEither = liftDatabaseOp . M.runQuery
 
 --------------------------------------------------------------------------------
 -- | Execute a query using 'throwError' to encode errors.
@@ -97,12 +77,13 @@ runQueryEither q = send (RunQuery q pure)
 --
 -- @since 0.1.0.0
 runQuery
-  :: ( Has Database sig m
-     , Has (Throw DbError) sig m
+  :: ( MonadDatabase m
+     , MonadError e m
+     , AsDbError  e
      )
   => Query a
   -> m a
-runQuery = either throwError pure <=< runQueryEither
+runQuery = either (throwError . (_DbError #)) pure <=< runQueryEither
 
 --------------------------------------------------------------------------------
 -- | Run a query inside a transaction using the default 'TransactionMode'.
@@ -113,7 +94,7 @@ runQuery = either throwError pure <=< runQueryEither
 --
 -- @since 0.1.0.0
 transactionEither
-  :: Has Database sig m
+  :: MonadDatabase m
   => Query a
   -> m (Either DbError a)
 transactionEither = transactionEitherWith PostgreSQL.defaultTransactionMode
@@ -127,12 +108,13 @@ transactionEither = transactionEitherWith PostgreSQL.defaultTransactionMode
 --
 -- @since 0.1.0.0
 transaction
-  :: ( Has Database        sig m
-     , Has (Throw DbError) sig m
+  :: ( MonadDatabase m
+     , MonadError e m
+     , AsDbError e
      )
   => Query a
   -> m a
-transaction = either throwError pure <=< transactionEither
+transaction = either (throwError . (_DbError #)) pure <=< transactionEither
 
 --------------------------------------------------------------------------------
 -- | Execute a query inside a transaction, providing the
@@ -152,11 +134,11 @@ transaction = either throwError pure <=< transactionEither
 --
 -- @since 0.1.0.0
 transactionEitherWith
-  :: Has Database sig m
+  :: MonadDatabase m
   => TransactionMode
   -> Query a
   -> m (Either DbError a)
-transactionEitherWith t q = send (Transaction t q pure)
+transactionEitherWith = (liftDatabaseOp .) . M.transaction
 
 --------------------------------------------------------------------------------
 -- | Run a query inside a transaction using the given 'TransactionMode'.
@@ -167,32 +149,34 @@ transactionEitherWith t q = send (Transaction t q pure)
 --
 -- @since 0.1.0.0
 transactionWith
-  :: ( Has Database        sig m
-     , Has (Throw DbError) sig m
+  :: ( MonadDatabase m
+     , MonadError e m
+     , AsDbError e
      )
   => TransactionMode
   -> Query a
   -> m a
-transactionWith t = either throwError pure <=< transactionEitherWith t
+transactionWith t =
+  either (throwError . (_DbError #)) pure <=< transactionEitherWith t
 
 --------------------------------------------------------------------------------
 -- | Abort and rollback the current transaction.
 --
 -- The running transaction (or query) will terminate with a
 --' RollbackError' error.
-rollback :: Has Database sig m => m a
-rollback = send (ThrowRollback pure)
+rollback :: MonadDatabase m => m a
+rollback = liftDatabaseOp M.throwRollback
 
 --------------------------------------------------------------------------------
 -- | Migrate the database.
 --
 -- @since 0.1.0.0
 migrate
-  :: (Has Database sig m)
+  :: (MonadDatabase m)
   => FilePath                   -- ^ Directory containing SQL files.
   -> MigrationVerbosity         -- ^ Verbosity level.
   -> m (MigrationResult String) -- ^ The migration results.
-migrate p v = send (Migrate p v pure)
+migrate = (liftDatabaseOp .) . M.migrate
 
 --------------------------------------------------------------------------------
 -- | Check to see if the table that holds migration data exists.  This
@@ -201,5 +185,5 @@ migrate p v = send (Migrate p v pure)
 -- time.
 --
 -- @since 0.1.0.0
-migrationTableExists :: Has Database sig m => m Bool
-migrationTableExists = send (MigrationTableExists pure)
+migrationTableExists :: MonadDatabase m => m Bool
+migrationTableExists = liftDatabaseOp M.migrationTableExists

@@ -1,5 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 {-|
 
 Copyright:
@@ -29,11 +27,11 @@ module Iolaus.Database.Query.Internal
   ) where
 
 --------------------------------------------------------------------------------
-import Control.Carrier.Reader
 import Control.Exception (onException)
 import Control.Lens ((^.))
 import Control.Monad (MonadPlus(..))
 import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Data.Int (Int64)
 import Data.Maybe (listToMaybe, fromMaybe)
 import Data.Profunctor.Product.Default (Default)
@@ -58,13 +56,15 @@ import Iolaus.Database.Runtime
 --
 -- @since 0.1.0.0
 newtype Query a = Query
-  { runQuery :: ReaderC (Runtime, Connection) IO a }
-  deriving (Functor, Applicative, Monad)
+  { runQuery :: ReaderT (Runtime, Connection) IO a }
+  deriving newtype (Functor, Applicative, Monad)
 
 --------------------------------------------------------------------------------
 -- | Internal function for lifting Opaleye query types.
 liftOpaleyeOp
-  :: ( MonadIO m, Has (Reader (Runtime, Connection)) sig m)
+  :: ( MonadIO m
+     , MonadReader (Runtime, Connection) m
+     )
   => (Connection -> IO a)
   -> m a
 liftOpaleyeOp action = do
@@ -119,13 +119,13 @@ selectToStream
   -> Query (m b)
 selectToStream = Query . go
   where
-    go :: forall k sig .
+    go :: forall k.
        ( MonadIO k
-       , Has (Reader (Runtime, Connection)) sig k
+       , MonadReader (Runtime, Connection) k
        )
        => Select a -> k (m b)
     go query = do
-      (_, conn) <- ask :: k (Runtime, Connection)
+      (_, conn) <- ask
       cursor <- liftIO (Pg.begin conn >> O.declareCursor conn query) :: k (O.Cursor b)
 
       let closeC   = O.closeCursor cursor >> Pg.commit conn

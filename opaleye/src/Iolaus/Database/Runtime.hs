@@ -18,10 +18,7 @@ License: BSD-2-Clause
 -}
 module Iolaus.Database.Runtime
   ( Runtime
-  , pool
-  , queryCounter
-  , retryCounter
-  , config
+  , HasRuntime(..)
   , initRuntime
   , unsafeRunPg
   , catchQueryErrors
@@ -29,8 +26,8 @@ module Iolaus.Database.Runtime
 
 --------------------------------------------------------------------------------
 import Control.Exception (Handler(..), catches)
-import Control.Lens ((^.))
-import Control.Lens.TH (makeLenses)
+import Control.Lens ((^.), (#))
+import Control.Lens.TH (makeClassy)
 import Control.Monad.IO.Class
 import Data.Pool (Pool)
 import qualified Data.Pool as Pool
@@ -53,10 +50,13 @@ data Runtime = Runtime
   { _pool         :: Pool Connection
   , _queryCounter :: Maybe Counter
   , _retryCounter :: Maybe Counter
-  , _config       :: Config
+  , __config     :: Config
   }
 
-makeLenses ''Runtime
+makeClassy ''Runtime
+
+instance HasConfig Runtime where
+  config = _config
 
 --------------------------------------------------------------------------------
 -- | Make an 'Runtime' value that is needed to execute queries.
@@ -107,6 +107,6 @@ unsafeRunPg e = Pool.withResource (e ^. pool)
 catchQueryErrors :: IO a -> IO (Either DbError a)
 catchQueryErrors m =
   catches (Right <$> m)
-    [ Handler $ \(e :: PostgreSQL.SqlError) -> pure (Left (SqlError e))
-    , Handler $ \(_ :: Rollback) -> pure (Left RollbackError)
+    [ Handler $ \(e :: PostgreSQL.SqlError) -> pure (Left (_SqlError # e))
+    , Handler $ \(_ :: Rollback) -> pure (Left (_RollbackError # ()))
     ]

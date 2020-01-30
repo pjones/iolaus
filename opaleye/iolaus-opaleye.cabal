@@ -1,17 +1,31 @@
 cabal-version:       2.2
 
 --------------------------------------------------------------------------------
-name:                iolaus-opaleye
-version:             0.1.0.0
-synopsis:            A database effect built on top of Opaleye and fused-effects
-license:             BSD-2-Clause
-license-file:        LICENSE
-author:              Peter Jones <pjones@devalot.com>
-maintainer:          Peter Jones <pjones@devalot.com>
-copyright:           Copyright (c) 2019-2020 Peter Jones
-category:            Application
--- bug-reports:
-description:         Please see the README.md file.
+name:         iolaus-opaleye
+version:      0.1.0.0
+synopsis:     A database effect built on top of Opaleye and the MTL
+license:      BSD-2-Clause
+license-file: LICENSE
+author:       Peter Jones <pjones@devalot.com>
+maintainer:   Peter Jones <pjones@devalot.com>
+copyright:    Copyright (c) 2019-2020 Peter Jones
+homepage:     https://github.com/pjones/iolaus
+bug-reports:  https://github.com/pjones/iolaus/issues
+category:     Application
+
+--------------------------------------------------------------------------------
+description:
+  Using Opaleye as the query DSL, this package adds a Classy MTL
+  interface for connecting to PostgreSQL, migrating the database
+  schema, and managing a connection pool.
+  .
+  To get started, review the "Control.Monad.Database" module and then
+  take a look at the <https://github.com/pjones/iolaus/blob/master/opaleye/example/Main.hs example>.
+  .
+  The other modules in this package provide additional features for
+  your application.  For example, the "Iolaus.Database.Table" module
+  include a type family for defining database tables as an alternative
+  to the fully polymorphic style.
 
 --------------------------------------------------------------------------------
 extra-source-files:
@@ -32,39 +46,45 @@ flag debug
 --------------------------------------------------------------------------------
 common options
   default-language: Haskell2010
-  ghc-options: -Wall
-               -Werror=incomplete-record-updates
-               -Werror=incomplete-uni-patterns
-               -Werror=missing-home-modules
-               -Widentities
-               -Wmissing-export-lists
-               -Wredundant-constraints
+  ghc-options:
+    -Wall
+    -Werror=incomplete-record-updates
+    -Werror=incomplete-uni-patterns
+    -Werror=missing-home-modules
+    -Widentities
+    -Wmissing-export-lists
+    -Wredundant-constraints
 
   if flag(debug)
     ghc-options: -ddump-splices
 
-  default-extensions: ConstraintKinds
-                      DataKinds
-                      DeriveFunctor
-                      DeriveGeneric
-                      DerivingVia
-                      DisambiguateRecordFields
-                      DuplicateRecordFields
-                      ExistentialQuantification
-                      FlexibleContexts
-                      FlexibleInstances
-                      LambdaCase
-                      MultiParamTypeClasses
-                      MultiWayIf
-                      NamedFieldPuns
-                      OverloadedStrings
-                      RankNTypes
-                      RecordWildCards
-                      ScopedTypeVariables
-                      StandaloneDeriving
-                      TupleSections
-                      TypeFamilies
-                      TypeOperators
+  default-extensions:
+    ConstraintKinds
+    DataKinds
+    DefaultSignatures
+    DeriveAnyClass
+    DeriveFunctor
+    DeriveGeneric
+    DerivingVia
+    DisambiguateRecordFields
+    DuplicateRecordFields
+    ExistentialQuantification
+    FlexibleContexts
+    FlexibleInstances
+    GeneralisedNewtypeDeriving
+    LambdaCase
+    MultiParamTypeClasses
+    MultiWayIf
+    NamedFieldPuns
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeFamilies
+    TypeOperators
 
 --------------------------------------------------------------------------------
 common dependencies
@@ -73,7 +93,7 @@ common dependencies
                , ekg-core                    >= 0.1   && < 0.2
                , exceptions                  >= 0.10  && < 0.11
                , filepath                    >= 1.4   && < 1.5
-               , fused-effects               >= 1.0   && < 1.1
+               , free                        >= 5.1   && < 5.2
                , lens                        >= 4.0   && < 5.0
                , mtl                         >= 2.2   && < 2.3
                , opaleye                     >= 0.6   && < 0.7
@@ -92,25 +112,23 @@ library
   import: options, dependencies
   hs-source-dirs: src
   exposed-modules:
-    Control.Carrier.Database
-    Control.Effect.Database
-    Iolaus.Database
+    Control.Monad.Database
+    Control.Monad.Database.Class
     Iolaus.Database.Extra
     Iolaus.Database.JSON
-    Iolaus.Database.Migrate
     Iolaus.Database.Newtype
-    Iolaus.Database.Query
     Iolaus.Database.Table
   other-modules:
-    Control.Carrier.Database.Internal
-    Control.Effect.Database.Internal
+    Control.Monad.Database.Internal
     Iolaus.Database.Config
     Iolaus.Database.Error
+    Iolaus.Database.Migrate
+    Iolaus.Database.Query
     Iolaus.Database.Query.Internal
     Iolaus.Database.Runtime
-    Iolaus.Database.Transaction
     Iolaus.Database.Table.Internal
     Iolaus.Database.Table.TH
+    Iolaus.Database.Transaction
 
 --------------------------------------------------------------------------------
 executable example

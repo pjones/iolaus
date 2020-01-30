@@ -17,19 +17,22 @@ License: BSD-2-Clause
 
 -}
 module Iolaus.Database.Error
-  ( DbError(..)
+  ( DbError
+  , AsDbError(..)
   , Rollback(..)
   ) where
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import qualified Database.PostgreSQL.Simple as PostgreSQL
 import Control.Exception (Exception)
+import Control.Lens.TH (makeClassyPrisms)
+import qualified Database.PostgreSQL.Simple as PostgreSQL
 
 --------------------------------------------------------------------------------
 -- An exception that triggers a database transaction rollback.
 newtype Rollback = Rollback ()
-  deriving (Eq, Show, Exception)
+  deriving stock (Eq, Show)
+  deriving anyclass (Exception)
 
 --------------------------------------------------------------------------------
 -- | Database errors.
@@ -45,3 +48,5 @@ data DbError
     -- ^ A 'Rollback' exception was thrown.
 
   deriving (Eq, Show)
+
+makeClassyPrisms ''DbError

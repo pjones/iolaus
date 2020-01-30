@@ -136,7 +136,8 @@ import Opaleye
 --   * 'Int64'
 --   * 'UUID'
 newtype Key t a = Key { getKey :: t }
-  deriving (Generic, Show, Eq, Ord, ToJSON, FromJSON)
+  deriving stock (Generic, Show, Eq, Ord)
+  deriving anyclass (ToJSON, FromJSON)
 
 instance FromField t => FromField (Key t a) where
   fromField f b = Key <$> fromField f b

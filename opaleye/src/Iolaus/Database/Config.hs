@@ -18,18 +18,13 @@ License: BSD-2-Clause
 -}
 module Iolaus.Database.Config
   ( Config
-  , connectionString
-  , poolSize
-  , poolTimeoutSec
-  , retries
-  , backoff
-  , metricsPrefix
+  , HasConfig(..)
   , defaultConfig
   ) where
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import Control.Lens.TH (makeLenses)
+import Control.Lens.TH (makeClassy)
 import Data.Aeson (ToJSON, FromJSON, (.=), (.:), (.:?), (.!=))
 import qualified Data.Aeson as Aeson
 import Data.Text (Text)
@@ -73,7 +68,7 @@ data Config = Config
 
   } deriving (Show, Eq)
 
-makeLenses ''Config
+makeClassy ''Config
 
 --------------------------------------------------------------------------------
 instance FromJSON Config where
