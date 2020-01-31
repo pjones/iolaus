@@ -58,7 +58,7 @@ import qualified Control.Monad.State.Strict as SState
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Iolaus.Crypto.Key
+import Iolaus.Crypto.Internal.Key
 import Iolaus.Crypto.Secret
 import Iolaus.Crypto.Signature
 

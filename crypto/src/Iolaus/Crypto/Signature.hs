@@ -13,6 +13,8 @@ Copyright:
 
 License: BSD-2-Clause
 
+A type to represent data that has been signed.
+
 -}
 module Iolaus.Crypto.Signature
   ( Signature(..)
@@ -29,16 +31,16 @@ import qualified Data.X509 as X509
 
 --------------------------------------------------------------------------------
 -- Package Imports:
-import Iolaus.Crypto.Encoding (Encoding(..))
-import Iolaus.Crypto.Encoding as Encoding
-import Iolaus.Crypto.Key
+import Iolaus.Crypto.Internal.Encoding (Encoding(..))
+import Iolaus.Crypto.Internal.Encoding as Encoding
+import Iolaus.Crypto.Internal.Key
 
 --------------------------------------------------------------------------------
 -- | A signature created from asymmetric cryptography.
 data Signature a = Signature
-  { sigBytes :: ByteString
-  , sigAlgo  :: Algo
-  , sigHash  :: Hash
+  { sigBytes :: ByteString -- ^ The signature.
+  , sigAlgo  :: Algo       -- ^ The encryption algorithm used.
+  , sigHash  :: Hash       -- ^ The hashing algorithm used.
   } deriving (Show, Eq)
 
 --------------------------------------------------------------------------------

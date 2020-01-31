@@ -19,9 +19,10 @@ description:
   MTL-style interface for cryptography along with a collection of
   useful types and functions (such as 'Password' and 'Salt').
   .
-  To start, you probably want to review the "Iolaus.Crypto" module
-  which includes the 'MonadCrypto' class and the collection of types
-  mentioned above.
+  To start, you probably want to review the
+  "Control.Monad.Crypto.Class" module which includes the 'MonadCrypto'
+  class and encryption primitives.  Then take a look at the modules
+  under the @Iolaus.Crypto@ hierarchy for useful encryption types.
   .
   For software-based cryptography, take a look at the "Control.Monad.Crypto.Cryptonite"
   module and the <https://github.com/pjones/iolaus/blob/master/crypto/examples examples>.
@@ -115,15 +116,6 @@ library
     Control.Monad.CertAuth.Class
     Control.Monad.Crypto.Class
     Control.Monad.Crypto.Cryptonite
-    Iolaus.Crypto
-
-  other-modules:
-    Control.Monad.CertAuth.Internal
-    Control.Monad.Crypto.Internal
-    Control.Monad.Crypto.KeyAccess
-    Iolaus.Crypto.Cryptonite.Asymmetric
-    Iolaus.Crypto.Cryptonite.Symmetric
-    Iolaus.Crypto.Encoding
     Iolaus.Crypto.Error
     Iolaus.Crypto.HashedSecret
     Iolaus.Crypto.Key
@@ -133,6 +125,15 @@ library
     Iolaus.Crypto.SaltedHash
     Iolaus.Crypto.Secret
     Iolaus.Crypto.Signature
+  other-modules:
+    Control.Monad.CertAuth.Internal
+    Control.Monad.Crypto.Internal
+    Control.Monad.Crypto.KeyAccess
+    Iolaus.Crypto.Cryptonite.Asymmetric
+    Iolaus.Crypto.Cryptonite.Symmetric
+    Iolaus.Crypto.Internal.Encoding
+    Iolaus.Crypto.Internal.Error
+    Iolaus.Crypto.Internal.Key
 
 --------------------------------------------------------------------------------
 executable symmetric

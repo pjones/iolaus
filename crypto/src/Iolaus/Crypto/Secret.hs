@@ -13,6 +13,8 @@ Copyright:
 
 License: BSD-2-Clause
 
+A type to represent data that has been encrypted.
+
 -}
 module Iolaus.Crypto.Secret
   ( Secret(..)
@@ -42,8 +44,8 @@ import Opaleye
 
 --------------------------------------------------------------------------------
 -- Package Imports:
-import Iolaus.Crypto.Encoding as Encoding
-import Iolaus.Crypto.Key (Label(..), toLabel)
+import Iolaus.Crypto.Internal.Encoding as Encoding
+import Iolaus.Crypto.Internal.Key (Label(..), toLabel)
 
 --------------------------------------------------------------------------------
 -- | A value of type @a@ that has been encrypted.

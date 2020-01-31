@@ -34,7 +34,10 @@ module Control.Monad.Crypto.Cryptonite
   , GetStatus(..)
   , PutStatus(..)
   , module Control.Monad.Crypto.Class
-  , module Iolaus.Crypto
+  , module Iolaus.Crypto.Error
+  , module Iolaus.Crypto.Key
+  , module Iolaus.Crypto.Secret
+  , module Iolaus.Crypto.Signature
   ) where
 
 --------------------------------------------------------------------------------
@@ -63,11 +66,18 @@ import Control.Monad.State.Class
 import Control.Monad.CertAuth.Internal
 import Control.Monad.Crypto.Class
 import Control.Monad.Crypto.KeyAccess
-import Iolaus.Crypto
 import Iolaus.Crypto.Cryptonite.Asymmetric as Asymmetric
 import Iolaus.Crypto.Cryptonite.Symmetric as Symmetric
+import Iolaus.Crypto.Internal.Error
+import Iolaus.Crypto.Internal.Key
+import Iolaus.Crypto.PEM
+
+--------------------------------------------------------------------------------
+-- For Exporting:
 import Iolaus.Crypto.Error
-import Iolaus.Crypto.Key (fileManager)
+import Iolaus.Crypto.Key
+import Iolaus.Crypto.Secret
+import Iolaus.Crypto.Signature
 
 import Control.Monad.Crypto.Internal
   ( MonadCrypto(..)

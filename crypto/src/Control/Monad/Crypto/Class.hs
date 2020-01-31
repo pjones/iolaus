@@ -46,6 +46,11 @@ module Control.Monad.Crypto.Class
   , verifySignature
   , verifySignature'
 
+    -- * Public Keys
+  , PublicKey
+  , encodePublicKey
+  , decodePublicKey
+
     -- * Private Keys
   , MonadKeyAccess
   , encodeKey

@@ -16,7 +16,7 @@ License: BSD-2-Clause
 Helper functions for encoding and decoding binary data to text.
 
 -}
-module Iolaus.Crypto.Encoding
+module Iolaus.Crypto.Internal.Encoding
   ( Encoding(..)
   , encode
   , decode

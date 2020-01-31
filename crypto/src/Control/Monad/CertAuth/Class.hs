@@ -72,7 +72,7 @@ import qualified Data.X509 as X509
 import qualified Control.Monad.CertAuth.Internal as CA
 import Control.Monad.CertAuth.Internal (MonadCertAuth(..), CaOptF(..), CaOpt)
 import Control.Monad.Crypto.Class
-import Iolaus.Crypto.Key
+import Iolaus.Crypto.Internal.Key
 import Iolaus.Crypto.PEM
 import Iolaus.Crypto.Signature
 

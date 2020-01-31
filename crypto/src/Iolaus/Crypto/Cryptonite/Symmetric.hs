@@ -54,9 +54,9 @@ import Crypto.Cipher.Types
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Iolaus.Crypto.Error
+import Iolaus.Crypto.Internal.Error
+import Iolaus.Crypto.Internal.Key
 import Iolaus.Crypto.Secret
-import Iolaus.Crypto.Key
 
 --------------------------------------------------------------------------------
 withBlockCipher :: forall r. Cipher -> (forall c'. (BlockCipher c') => Proxy c' -> r) -> r

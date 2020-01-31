@@ -13,7 +13,7 @@ Copyright:
 
 License: BSD-2-Clause
 
-Core password management types an functions.
+Core password management types and functions.
 
 -}
 module Iolaus.Crypto.Password
@@ -63,7 +63,7 @@ import Opaleye
 --------------------------------------------------------------------------------
 -- Project Imports:
 import Control.Monad.Crypto.Class
-import Iolaus.Crypto.Encoding (Encoding(..), normalize)
+import Iolaus.Crypto.Internal.Encoding (Encoding(..), normalize)
 import Iolaus.Crypto.Salt
 
 --------------------------------------------------------------------------------

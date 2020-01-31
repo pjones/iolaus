@@ -40,9 +40,9 @@ import Opaleye.SqlTypes (SqlBytea)
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Iolaus.Crypto.Encoding (Encoding(..))
-import qualified Iolaus.Crypto.Encoding as Encoding
-import Iolaus.Crypto.Error (CryptoError(..))
+import Iolaus.Crypto.Internal.Encoding (Encoding(..))
+import qualified Iolaus.Crypto.Internal.Encoding as Encoding
+import Iolaus.Crypto.Internal.Error (CryptoError(..))
 import Control.Monad.Crypto.Class
 
 --------------------------------------------------------------------------------

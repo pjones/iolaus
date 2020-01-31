@@ -13,10 +13,17 @@ Copyright:
 
 License: BSD-2-Clause
 
+Encrypted values that are paired with their hashed digest.
+
 -}
 module Iolaus.Crypto.HashedSecret
-  ( HashedSecret(..)
+  ( -- * Encrypting and Hashing
+    HashedSecret(..)
   , toHashedSecret
+
+    -- * Re-exports
+  , module Iolaus.Crypto.SaltedHash
+  , module Iolaus.Crypto.Secret
   ) where
 
 --------------------------------------------------------------------------------

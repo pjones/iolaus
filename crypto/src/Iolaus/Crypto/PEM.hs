@@ -17,14 +17,22 @@ PEM encoding and decoding.
 
 -}
 module Iolaus.Crypto.PEM
-  ( SectionLabel(..)
+  ( -- * PEM Labels
+    SectionLabel(..)
+
+    -- * Converting to/from PEM
   , toPEM
   , toPEM'
   , fromPEM
   , fromPEM'
+
+    -- * PEM Encoding and Decoding
   , encodePEM
   , decodePEM
   , decodePEM'
+
+    -- * Re-exports
+  , PEM(..)
   ) where
 
 

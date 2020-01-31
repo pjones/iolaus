@@ -49,8 +49,8 @@ import GHC.Generics (Generic)
 
 --------------------------------------------------------------------------------
 -- Package Imports:
-import Iolaus.Crypto.Key
-import Iolaus.Crypto.Error
+import Iolaus.Crypto.Internal.Key
+import Iolaus.Crypto.Internal.Error
 import Iolaus.Crypto.Secret
 import Iolaus.Crypto.Signature
 

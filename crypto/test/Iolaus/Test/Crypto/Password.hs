@@ -37,7 +37,8 @@ import qualified Text.Password.Strength.Config as Zxcvbn
 
 --------------------------------------------------------------------------------
 -- Package Imports:
-import Iolaus.Crypto
+import Iolaus.Crypto.Password
+import Iolaus.Crypto.Salt
 
 --------------------------------------------------------------------------------
 -- | Main entry point.
