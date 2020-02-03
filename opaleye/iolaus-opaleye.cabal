@@ -114,16 +114,16 @@ library
   exposed-modules:
     Control.Monad.Database
     Control.Monad.Database.Class
+    Iolaus.Database.Config
+    Iolaus.Database.Error
     Iolaus.Database.Extra
     Iolaus.Database.JSON
     Iolaus.Database.Newtype
+    Iolaus.Database.Query
     Iolaus.Database.Table
   other-modules:
     Control.Monad.Database.Internal
-    Iolaus.Database.Config
-    Iolaus.Database.Error
     Iolaus.Database.Migrate
-    Iolaus.Database.Query
     Iolaus.Database.Query.Internal
     Iolaus.Database.Runtime
     Iolaus.Database.Table.Internal

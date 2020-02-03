@@ -30,6 +30,9 @@ import Control.Monad.Database
 import Control.Monad.Except
 import Data.Text (Text)
 import qualified Data.Text as Text
+import Iolaus.Database.Config
+import Iolaus.Database.Error
+import Iolaus.Database.Query
 import Iolaus.Database.Table
 import List.Transformer (ListT(..), Step(..))
 import System.Environment (getEnv)
@@ -156,7 +159,7 @@ main = do
   -- need to tell Cabal where the source directory is so it can find
   -- the schema files.  Set the @iolaus_opaleye_datadir@ environment
   -- variable to the directory containing the @example@ directory.
-  config <- defaultConfig . Text.pack <$> getEnv "DB_CONN"
+  config <- defaultDbConfig . Text.pack <$> getEnv "DB_CONN"
   runtime <- initRuntime config (Just store)
 
   -- Makes the name prompting in 'app' nicer.

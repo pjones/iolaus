@@ -38,6 +38,10 @@ module Control.Monad.Database.Class
     -- * Schema Migrations
   , migrate
   , migrationTableExists
+
+    -- * Re-exports
+  , MigrationVerbosity(..)
+  , MigrationResult(..)
   ) where
 
 --------------------------------------------------------------------------------

@@ -15,11 +15,18 @@ Copyright:
 
 License: BSD-2-Clause
 
+Database configuration.
+
 -}
 module Iolaus.Database.Config
-  ( Config
-  , HasConfig(..)
-  , defaultConfig
+  ( -- * Database Configuration
+    DbConfig(..)
+
+    -- * Lenses
+  , HasDbConfig(..)
+
+    -- * Default Configuration
+  , defaultDbConfig
   ) where
 
 --------------------------------------------------------------------------------
@@ -41,70 +48,69 @@ import Numeric.Natural (Natural)
 --   * Decode from YAML via the @yaml@ package.
 --
 -- @since 0.1.0.0
-data Config = Config
-  { _connectionString :: Text
+data DbConfig = DbConfig
+  { _databaseConnectionString :: Text
     -- ^ libpq connection string.
 
-  , _poolSize :: Natural
-    -- ^ Size of the database connection pool.  A value of 'Nothing'
-    -- means to use the default value.
+  , _databasePoolSize :: Natural
+    -- ^ Size of the database connection pool.
 
-  , _poolTimeoutSec :: Natural
-    -- ^ Number of seconds to leave an unused connection open.  A
-    -- value of 'Nothing' means to use the default value.
+  , _databasePoolTimeoutSec :: Natural
+    -- ^ Number of seconds to leave an unused connection open.
 
-  , _retries :: Natural
-    -- ^ Number of times to retry a failed query.  Set to @0@ to
-    -- disable.  (A value of 'Nothing' means to use the default.)
+  , _databaseTransactionRetries :: Natural
+    -- ^ Number of times to retry a failed transaction.  Set to @0@ to
+    -- disable.
 
-  , _backoff :: Natural
-    -- ^ Number of microseconds (\(10^{-6}\)) to wait before retrying a
-    -- failed query.  This value is increased exponentially after each
-    -- subsequent failure.  (A value of 'Nothing' means use the
-    -- default.)
+  , _databaseTransactionBackoff :: Natural
+    -- ^ Number of microseconds (\(10^{-6}\)) to wait before retrying
+    -- a failed transaction.  This value is increased exponentially
+    -- after each subsequent failure.
 
-  , _metricsPrefix :: Text
+  , _databaseMetricsPrefix :: Text
     -- ^ The prefix for collected metrics.  Example: @iolaus.opaleye@
 
   } deriving (Show, Eq)
 
-makeClassy ''Config
+makeClassy ''DbConfig
 
 --------------------------------------------------------------------------------
-instance FromJSON Config where
+instance FromJSON DbConfig where
   parseJSON = Aeson.withObject "Database Config" $ \v ->
-    Config <$> v .:  "connection_string"
-           <*> v .:? "pool_size"        .!= _poolSize
-           <*> v .:? "pool_timeout_sec" .!= _poolTimeoutSec
-           <*> v .:? "retries"          .!= _retries
-           <*> v .:? "backoff"          .!= _backoff
-           <*> fmap fixPrefix (v .:? "metrics_prefix" .!= _metricsPrefix)
+    DbConfig
+      <$> v .:  "connection_string"
+      <*> v .:? "pool_size"        .!= _databasePoolSize
+      <*> v .:? "pool_timeout_sec" .!= _databasePoolTimeoutSec
+      <*> v .:? "retries"          .!= _databaseTransactionRetries
+      <*> v .:? "backoff"          .!= _databaseTransactionBackoff
+      <*> fmap fixPrefix (v .:? "metrics_prefix" .!= _databaseMetricsPrefix)
 
     where
-      Config{..} = defaultConfig (error "impossible")
+      DbConfig{..} = defaultDbConfig (error "impossible")
       fixPrefix = Text.strip . Text.dropWhileEnd (== '.')
 
 --------------------------------------------------------------------------------
-instance ToJSON Config where
-  toJSON Config{..} = Aeson.object
-    [ "connection_string" .= _connectionString
-    , "pool_size"         .= _poolSize
-    , "pool_timeout_sec"  .= _poolTimeoutSec
-    , "retries"           .= _retries
-    , "backoff"           .= _backoff
-    , "metrics_prefix"    .= _metricsPrefix
+instance ToJSON DbConfig where
+  toJSON DbConfig{..} = Aeson.object
+    [ "connection_string" .= _databaseConnectionString
+    , "pool_size"         .= _databasePoolSize
+    , "pool_timeout_sec"  .= _databasePoolTimeoutSec
+    , "retries"           .= _databaseTransactionRetries
+    , "backoff"           .= _databaseTransactionBackoff
+    , "metrics_prefix"    .= _databaseMetricsPrefix
     ]
 
 --------------------------------------------------------------------------------
 -- | Build a default configuration by supplying a connection string.
 --
 -- @since 0.1.0.0
-defaultConfig :: Text -> Config
-defaultConfig t =
-  Config { _connectionString = t
-         , _poolSize         = 5
-         , _poolTimeoutSec   = 120
-         , _retries          = 3
-         , _backoff          = 50000 {- 50ms -}
-         , _metricsPrefix    = "iolaus.opaleye"
-         }
+defaultDbConfig :: Text -> DbConfig
+defaultDbConfig t =
+  DbConfig
+    { _databaseConnectionString   = t
+    , _databasePoolSize           = 5
+    , _databasePoolTimeoutSec     = 120
+    , _databaseTransactionRetries = 3
+    , _databaseTransactionBackoff = 50000 {- 50ms -}
+    , _databaseMetricsPrefix      = "iolaus.opaleye"
+    }

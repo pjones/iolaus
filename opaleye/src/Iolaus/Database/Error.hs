@@ -15,10 +15,18 @@ Copyright:
 
 License: BSD-2-Clause
 
+Database errors.
+
 -}
 module Iolaus.Database.Error
-  ( DbError
+  (
+    -- * Database Errors
+    DbError(..)
+
+    -- * Prisms
   , AsDbError(..)
+
+    -- * Exceptions
   , Rollback(..)
   ) where
 
@@ -30,6 +38,8 @@ import qualified Database.PostgreSQL.Simple as PostgreSQL
 
 --------------------------------------------------------------------------------
 -- An exception that triggers a database transaction rollback.
+--
+-- @since 0.1.0.0
 newtype Rollback = Rollback ()
   deriving stock (Eq, Show)
   deriving anyclass (Exception)

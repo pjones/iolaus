@@ -24,8 +24,8 @@ Test the Template Haskell in @Iolaus.Opaleye.Newtype@.
 -}
 module Iolaus.Test.Newtype
   ( Name(..)
-  , insert
-  , select
+  , testInsert
+  , testSelect
   , test
   ) where
 
@@ -34,8 +34,8 @@ import Data.Int (Int64)
 import Data.Profunctor.Product.TH (makeAdaptorAndInstance)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import qualified Control.Monad.Database as DB
 import Iolaus.Database.Newtype (makeNewtypeInstances)
+import Iolaus.Database.Query
 import Opaleye (Table, Field, table, tableField)
 import qualified Opaleye as O
 import qualified Opaleye.Constant as C
@@ -73,15 +73,15 @@ people = table "people" (pPerson
 
 --------------------------------------------------------------------------------
 -- | Test inserts.
-insert :: DB.Query Int64
-insert =
+testInsert :: Query Int64
+testInsert =
   let p = Person (C.constant $ Name "J") (C.constant $ Name "Doe")
-  in DB.insert $ O.Insert people [p] O.rCount Nothing
+  in insert $ O.Insert people [p] O.rCount Nothing
 
 --------------------------------------------------------------------------------
 -- | Test selects.
-select :: DB.Query [Person]
-select = DB.select (O.selectTable people)
+testSelect :: Query [Person]
+testSelect = select (O.selectTable people)
 
 --------------------------------------------------------------------------------
 -- | This exists so that all of the Template Haskell runs through the compiler.

@@ -50,19 +50,19 @@ data Runtime = Runtime
   { _pool         :: Pool Connection
   , _queryCounter :: Maybe Counter
   , _retryCounter :: Maybe Counter
-  , __config     :: Config
+  , _config       :: DbConfig
   }
 
 makeClassy ''Runtime
 
-instance HasConfig Runtime where
-  config = _config
+instance HasDbConfig Runtime where
+  dbConfig = config
 
 --------------------------------------------------------------------------------
 -- | Make an 'Runtime' value that is needed to execute queries.
 --
 -- @since 0.1.0.0
-initRuntime :: (MonadIO m) => Config -> Maybe Metrics.Store -> m Runtime
+initRuntime :: (MonadIO m) => DbConfig -> Maybe Metrics.Store -> m Runtime
 initRuntime c store =
   Runtime <$> mkPool c
           <*> liftIO (counter "num_db_queries")
@@ -70,7 +70,7 @@ initRuntime c store =
           <*> pure c
   where
     prefix :: Text
-    prefix = c ^. metricsPrefix
+    prefix = c ^. databaseMetricsPrefix
 
     counter :: Text -> IO (Maybe Counter)
     counter name =
@@ -80,15 +80,15 @@ initRuntime c store =
 
 --------------------------------------------------------------------------------
 -- | Given a configuration object, create a database handle.
-mkPool :: (MonadIO m) => Config -> m (Pool Connection)
+mkPool :: (MonadIO m) => DbConfig -> m (Pool Connection)
 mkPool cfg =
     liftIO (Pool.createPool open close 1 timeout size)
   where
-    constr  = Text.encodeUtf8 (cfg ^. connectionString)
+    constr  = Text.encodeUtf8 (cfg ^. databaseConnectionString)
     open    = PostgreSQL.connectPostgreSQL constr
     close   = PostgreSQL.close
-    timeout = fromIntegral (cfg ^. poolTimeoutSec)
-    size    = fromIntegral (cfg ^. poolSize)
+    timeout = fromIntegral (cfg ^. databasePoolTimeoutSec)
+    size    = fromIntegral (cfg ^. databasePoolSize)
 
 --------------------------------------------------------------------------------
 -- | Yields a database connection to a function.  Useful when you need

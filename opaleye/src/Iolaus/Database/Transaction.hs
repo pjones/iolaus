@@ -78,7 +78,7 @@ transaction rt mode f = catchQueryErrors go
     abort :: Connection -> IO Bool
     abort c = PostgreSQL.rollback c >> pure False
 
-    policy :: Config -> RetryPolicyM IO
+    policy :: DbConfig -> RetryPolicyM IO
     policy cfg =
-      exponentialBackoff (fromIntegral (cfg ^. backoff)) <>
-      limitRetries (fromIntegral (cfg ^. retries))
+      exponentialBackoff (fromIntegral (cfg ^. databaseTransactionBackoff)) <>
+      limitRetries (fromIntegral (cfg ^. databaseTransactionRetries))
