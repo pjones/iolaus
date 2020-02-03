@@ -27,6 +27,7 @@ module Iolaus.Database.Table.Internal
   , SqlRead
   , SqlWrite
   , ForceNullable
+  , ForceOptional
   ) where
 
 --------------------------------------------------------------------------------
@@ -38,6 +39,7 @@ import qualified Opaleye.Internal.TypeFamilies as T
 data WriteMode
   = ReadOnly
   | Required
+  | ForeignKey
   | Optional
   | Nullable
   deriving Eq
@@ -68,6 +70,7 @@ instance Aeson.FromJSON NotAllowed where
 type family OpaleyeNullable f where
   OpaleyeNullable 'ReadOnly   = T.NN
   OpaleyeNullable 'Required   = T.NN
+  OpaleyeNullable 'ForeignKey = T.NN
   OpaleyeNullable 'Optional   = T.NN
   OpaleyeNullable 'Nullable   = T.N
 
@@ -77,15 +80,17 @@ type family OpaleyeNullable f where
 type family OpaleyeOptional f where
   OpaleyeOptional 'ReadOnly   = T.Opt
   OpaleyeOptional 'Required   = T.Req
+  OpaleyeOptional 'ForeignKey = T.Req
   OpaleyeOptional 'Optional   = T.Opt
   OpaleyeOptional 'Nullable   = T.Req
 
 --------------------------------------------------------------------------------
 type family UIMap m h where
-  UIMap 'ReadOnly h = NotAllowed
-  UIMap 'Required h = h
-  UIMap 'Optional h = Maybe h
-  UIMap 'Nullable h = Maybe h
+  UIMap 'ReadOnly h   = NotAllowed
+  UIMap 'Required h   = h
+  UIMap 'ForeignKey h = NotAllowed
+  UIMap 'Optional h   = Maybe h
+  UIMap 'Nullable h   = Maybe h
 
 --------------------------------------------------------------------------------
 data ForHask_
@@ -93,6 +98,7 @@ data ForUI_
 data SqlWrite_
 data SqlRead_
 data ForceNullable_
+data ForceOptional_
 
 --------------------------------------------------------------------------------
 -- | Fields take on their Haskell types.
@@ -115,11 +121,15 @@ type SqlWrite = 'T.H SqlWrite_
 type SqlRead = 'T.H SqlRead_
 
 --------------------------------------------------------------------------------
--- | Overwrite all fields to 'Nullable'.
+-- | Overwrite all fields to 'Nullable'.  Used in place of 'SqlRead'.
 --
 -- Treats all fields as if they were originally defined as
 -- 'Nullable'.  Mainly useful for Opaleye joins.
 type ForceNullable = 'T.H ForceNullable_
+
+--------------------------------------------------------------------------------
+-- | Similar to 'ForceNullable' but used in place of 'ForHask'.
+type ForceOptional = 'T.H ForceOptional_
 
 --------------------------------------------------------------------------------
 -- | Internal column encoding for the Opaleye @A@ type family.
@@ -144,6 +154,11 @@ type instance T.A ('T.H SqlRead_) ('ColEnc '(h, d, m, n))
 -- | Turn the record fields into nullable fields:
 type instance T.A ('T.H ForceNullable_) ('ColEnc '(h, d, m, n))
   = T.TableRecordField ('T.H T.OT) h d T.N T.Req
+
+--------------------------------------------------------------------------------
+-- | Turn the record fields into optional fields:
+type instance T.A ('T.H ForceOptional_) ('ColEnc '(h, d, m, n))
+  = T.TableRecordField ('T.H T.HT) h d T.N T.Req
 
 --------------------------------------------------------------------------------
 -- | Turns record fields into Haskell types for user interfaces.

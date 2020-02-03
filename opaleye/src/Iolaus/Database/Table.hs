@@ -50,6 +50,7 @@ data Person f = Person
  , name   :: 'Col' f "name"   Text     SqlText 'Required'
  , age    :: 'Col' f "age"    Int      SqlInt4 'Nullable'
  , height :: 'Col' f "height" Int      SqlInt4 'Optional'
+ , extId  :: 'Col' f "ext_id" Int      SqlInt4 'ForeignKey'
  }
 
 makeTable ''Person "people"
@@ -81,6 +82,7 @@ module Iolaus.Database.Table
   , Nullable
   , Optional
   , ReadOnly
+  , ForeignKey
 
     -- * Types to Make Records Concrete
     --
@@ -94,6 +96,7 @@ module Iolaus.Database.Table
   , ForHask
   , ForUI
   , ForceNullable
+  , ForceOptional
 
   -- * User Interface Helpers
   , NotAllowed(..)
@@ -236,3 +239,21 @@ type Optional = 'Optional
 
 -}
 type ReadOnly = 'ReadOnly
+
+--------------------------------------------------------------------------------
+{- | Similar to @Required@, except this column is forbidden when used in the UI.
+
+   >>> :t extId @SqlWrite
+   extId @SqlWrite :: Person SqlWrite -> Field SqlInt4
+
+   >>> :t extId @SqlRead
+   extId @SqlRead :: Person SqlRead -> Field SqlInt4
+
+   >>> :t extId @ForHask
+   extId @ForHask :: Person ForHask -> Int
+
+   >>> :t extId @ForUI
+   extId @ForUI :: Person ForUI -> NotAllowed
+
+-}
+type ForeignKey = 'ForeignKey
