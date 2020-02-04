@@ -13,40 +13,27 @@ Copyright:
 
 License: BSD-2-Clause
 
-Public Key Infrastructure and Certificate Authorities.
-
-In other words, a high-level wrapper around the X509 package.
+Helper functions and types for the X509 package.
 
 -}
-module Control.Monad.CertAuth.Class
-  ( -- * A Monad Class for Certificate Authorities
-    MonadCertAuth(..)
-
-    -- * Functions for Implementing a Certificate Authority
-  , newCert
+module Iolaus.Crypto.X509
+  ( -- * Creating and Signing Certificates
+    makeCert
   , signCert
   , encodeSignedCert
+
+    -- * Certificate Authority Extensions
   , PathLenConstraint(..)
   , certForCA
 
-    -- * Functions for Using a Certificate Authority
+    -- * Leaf Certificate Extensions
   , Endpoint(..)
   , certForTLS
   , certForDomain
-  , newLeafCert
-  , certChain
 
-  -- * Certificate Extensions
+  -- * General Certificate Extensions
   , CriticalExt(..)
   , appendExtension
-
-    -- * A Free Monad for Certificate Authorities
-  , CaOptF(..)
-  , CaOpt
-  , fetchHashAndAlgo
-  , fetchRootCert
-  , fetchIntermediateCert
-  , signWithIntermediateCert
   ) where
 
 --------------------------------------------------------------------------------
@@ -54,7 +41,6 @@ module Control.Monad.CertAuth.Class
 import qualified Data.ASN1.OID as ASN1
 import qualified Data.ASN1.Types as ASN1
 import Data.Bits (shiftL, (.|.))
-import qualified Data.ByteString.Lazy as LBS
 import Data.Hourglass (DateTime(..), timeFromElapsedP)
 import Data.PEM (PEM)
 import Data.Text (Text)
@@ -69,8 +55,6 @@ import qualified Data.X509 as X509
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import qualified Control.Monad.CertAuth.Internal as CA
-import Control.Monad.CertAuth.Internal (MonadCertAuth(..), CaOptF(..), CaOpt)
 import Control.Monad.Crypto.Class
 import Iolaus.Crypto.Internal.Key
 import Iolaus.Crypto.PEM
@@ -82,7 +66,7 @@ import Iolaus.Crypto.Signature
 -- The generated certificate will need to have any necessary
 -- extensions added to it before passing it to the 'signCert'
 -- function.
-newCert
+makeCert
   :: UUID
      -- ^ The serial number to use.
   -> Text
@@ -99,7 +83,7 @@ newCert
      -- ^ The public key to put into the certificate.
   -> Certificate
      -- ^ The new, unsigned certificate.
-newCert sn cn algo hash issuer (start, end) =
+makeCert sn cn algo hash issuer (start, end) =
   let subjectDN    = makeCN cn
       dnFromIssuer = certSubjectDN . signedObject . X509.getSigned
 
@@ -221,59 +205,9 @@ certForCA plen =
     basic = X509.ExtBasicConstraints True (fromIntegral <$> pathLenConstraint plen)
 
 --------------------------------------------------------------------------------
--- | Create a new certificate and sign it.
---
--- The certificate will be signed with the Certificate Authority's
--- intermediate certificate.
-newLeafCert
-  :: ( MonadCrypto k m
-     , MonadCertAuth m
-     )
-  => Text
-     -- ^ Common name for the subject field.
-  -> UUID
-     -- ^ Used to create the certificate's serial number and the label
-     -- for the 'KeyPair'.
-  -> Label
-     -- ^ The label to use for the generated 'KeyPair'
-  -> (UTCTime, UTCTime)
-     -- ^ Time range for validity.
-  -> (Certificate -> Certificate)
-     -- ^ Function to fine-tune a certificate (e.g. 'certForTLS').
-  -> m (KeyPair k, SignedCertificate)
-     -- ^ Private key and signed certificate.
-newLeafCert name uuid label validity f = do
-  issuer <- fetchIntermediateCert
-  (hash, algo) <-  fetchHashAndAlgo
-  key <- generateKeyPair algo label
-  pub <- toPublicKey key
-  let cert = newCert uuid name algo hash (Just issuer) validity pub
-  signed <- signWithIntermediateCert (f cert)
-  return (key, signed)
-
---------------------------------------------------------------------------------
 -- | Encode a signed certificate in PEM format.
 encodeSignedCert :: SignedCertificate -> PEM
 encodeSignedCert = toPEM' CertificateSection . X509.encodeSignedObject
-
---------------------------------------------------------------------------------
--- | An entire certificate chain encoded as PEM.
-certChain
-  :: ( MonadCertAuth m )
-  => Maybe SignedCertificate
-     -- ^ Include this certificate at the end of the chain
-  -> m LBS.ByteString
-certChain mcert = do
-  root <- fetchRootCert
-  int  <- fetchIntermediateCert
-
-  return $ case mcert of
-    Nothing -> go [root, int]
-    Just c  -> go [root, int, c]
-
-  where
-    go :: [SignedCertificate] -> LBS.ByteString
-    go = encodePEM . map encodeSignedCert
 
 --------------------------------------------------------------------------------
 -- | Create a common name field.
@@ -302,28 +236,3 @@ toSerialNumber uuid =
      fromIntegral w2 `shiftL` 64 .|.
      fromIntegral w3 `shiftL` 32 .|.
      fromIntegral w4
-
---------------------------------------------------------------------------------
--- | Yield the hashing and asymmetric encryption algorithms that
--- should be used.
-fetchHashAndAlgo :: MonadCertAuth m => m (Hash, Algo)
-fetchHashAndAlgo = liftCaOpt CA.fetchHashAndAlgo
-
---------------------------------------------------------------------------------
--- | Yield the signed root certificate.
-fetchRootCert :: MonadCertAuth m => m SignedCertificate
-fetchRootCert = liftCaOpt CA.fetchRootCert
-
---------------------------------------------------------------------------------
--- | Yield the intermediate certificate that is currently active.
--- Note that you may have to generate the certificate and sign it with
--- the root certificate.
-fetchIntermediateCert :: MonadCertAuth m => m SignedCertificate
-fetchIntermediateCert = liftCaOpt CA.fetchIntermediateCert
-
---------------------------------------------------------------------------------
--- | Sign the given certificate using the active intermediate
--- certificate.  Note that you may have to generate the intermediate
--- certificate and sign it with the root certificate first.
-signWithIntermediateCert :: MonadCertAuth m => Certificate -> m SignedCertificate
-signWithIntermediateCert = liftCaOpt . CA.signWithIntermediateCert

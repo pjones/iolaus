@@ -113,7 +113,6 @@ library
   hs-source-dirs: src
 
   exposed-modules:
-    Control.Monad.CertAuth.Class
     Control.Monad.Crypto.Class
     Control.Monad.Crypto.Cryptonite
     Iolaus.Crypto.Error
@@ -125,8 +124,8 @@ library
     Iolaus.Crypto.SaltedHash
     Iolaus.Crypto.Secret
     Iolaus.Crypto.Signature
+    Iolaus.Crypto.X509
   other-modules:
-    Control.Monad.CertAuth.Internal
     Control.Monad.Crypto.Internal
     Control.Monad.Crypto.KeyAccess
     Iolaus.Crypto.Cryptonite.Asymmetric

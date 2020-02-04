@@ -63,7 +63,6 @@ import Control.Monad.State.Class
 
 --------------------------------------------------------------------------------
 -- Project Imports:
-import Control.Monad.CertAuth.Internal
 import Control.Monad.Crypto.Class
 import Control.Monad.Crypto.KeyAccess
 import Iolaus.Crypto.Cryptonite.Asymmetric as Asymmetric
@@ -81,8 +80,8 @@ import Iolaus.Crypto.Signature
 
 import Control.Monad.Crypto.Internal
   ( MonadCrypto(..)
-  , CryptoOpt
-  , CryptoOptF(..)
+  , CryptoOp
+  , CryptoOpF(..)
   , KeyManager(..)
   , FileExtension(..)
   , GetStatus(..)
@@ -113,7 +112,6 @@ newtype RandomT m a = RandomT
                    , MonadError e
                    , MonadState s
                    , MonadCont
-                   , MonadCertAuth
                    , MonadDatabase
                    )
 
@@ -147,7 +145,6 @@ newtype CryptoniteT m a = CryptoniteT
                    , MonadRandom
                    , MonadState s
                    , MonadCont
-                   , MonadCertAuth
                    , MonadDatabase
                    )
 
@@ -157,11 +154,11 @@ data instance KeyPair Cryptonite = CryptoniteKeyPair Label AsymmetricKey
 
 --------------------------------------------------------------------------------
 instance (MonadIO m) => MonadCrypto Cryptonite (CryptoniteT m) where
-  liftCryptoOpt = evalCrypto
+  liftCryptoOp = evalCrypto
 
 --------------------------------------------------------------------------------
 instance (MonadIO m) => MonadKeyAccess Cryptonite (CryptoniteT m) where
-  liftKeyAccessOpt = evalKeyAccess
+  liftKeyAccessOp = evalKeyAccess
 
 --------------------------------------------------------------------------------
 instance MonadTrans CryptoniteT where
@@ -187,7 +184,7 @@ instance (MonadReader r m) => MonadReader r (CryptoniteT m) where
 --------------------------------------------------------------------------------
 evalCrypto
   :: ( MonadIO m )
-  => CryptoOpt Cryptonite a
+  => CryptoOp Cryptonite a
   -> CryptoniteT m a
 evalCrypto opt = CryptoniteT . runF opt pure $ \case
   GenerateRandomBytes n next ->
@@ -239,7 +236,7 @@ evalCrypto opt = CryptoniteT . runF opt pure $ \case
     Asymmetric.verify pub sig bs >>= next
 
 --------------------------------------------------------------------------------
-evalKeyAccess :: MonadIO m => KeyAccessOpt Cryptonite a -> CryptoniteT m a
+evalKeyAccess :: MonadIO m => KeyAccessOp Cryptonite a -> CryptoniteT m a
 evalKeyAccess opt = CryptoniteT . runF opt pure $ \case
   EncodeKey (CryptoniteKey l k) next ->
     next (Binary.encode (l, k))

@@ -18,8 +18,8 @@ License: BSD-2-Clause
 -}
 module Control.Monad.Crypto.KeyAccess
   ( MonadKeyAccess(..)
-  , KeyAccessOpt
-  , KeyAccessOptF(..)
+  , KeyAccessOp
+  , KeyAccessOpF(..)
   , encodeKey
   , decodeKey
   , encodePrivateKey
@@ -51,10 +51,10 @@ import Iolaus.Crypto.Key
 -- be implemented for software-based cryptography as hardware devices
 -- typically don't allow access to the raw key data.
 class MonadCrypto k m => MonadKeyAccess k (m :: * -> *) | m -> k where
-  liftKeyAccessOpt :: KeyAccessOpt k a -> m a
+  liftKeyAccessOp :: KeyAccessOp k a -> m a
 
-  default liftKeyAccessOpt :: (MonadTrans t, MonadKeyAccess k m1, m ~ t m1) => KeyAccessOpt k a -> m a
-  liftKeyAccessOpt = lift . liftKeyAccessOpt
+  default liftKeyAccessOp :: (MonadTrans t, MonadKeyAccess k m1, m ~ t m1) => KeyAccessOp k a -> m a
+  liftKeyAccessOp = lift . liftKeyAccessOp
 
 --------------------------------------------------------------------------------
 instance MonadKeyAccess k m => MonadKeyAccess k (ExceptT e m)
@@ -65,12 +65,12 @@ instance MonadKeyAccess k m => MonadKeyAccess k (IdentityT m)
 instance MonadKeyAccess k m => MonadKeyAccess k (ContT r m)
 
 --------------------------------------------------------------------------------
-data KeyAccessOptF (k :: *) f
+data KeyAccessOpF (k :: *) f
   = EncodeKey (Key k) (ByteString -> f)
   | DecodeKey ByteString (Maybe (Key k) -> f)
   | EncodePrivateKey (KeyPair k) (ByteString -> f)
   | DecodePrivateKey Label ByteString (Maybe (KeyPair k) -> f)
 
-deriving instance Functor (KeyAccessOptF k)
-type KeyAccessOpt k = F (KeyAccessOptF k)
-makeFree ''KeyAccessOptF
+deriving instance Functor (KeyAccessOpF k)
+type KeyAccessOp k = F (KeyAccessOpF k)
+makeFree ''KeyAccessOpF

@@ -20,8 +20,8 @@ module Control.Monad.Crypto.Internal
   ( MonadCrypto(..)
   , Key
   , KeyPair
-  , CryptoOpt
-  , CryptoOptF(..)
+  , CryptoOp
+  , CryptoOpF(..)
   , KeyManager(..)
   , FileExtension(..)
   , GetStatus(..)
@@ -80,10 +80,10 @@ data family KeyPair :: * -> *
 class (Monad m) => MonadCrypto k (m :: * -> *) | m -> k where
   -- | The primary method of a cryptographic monad, evaluate a crypto
   -- operation.
-  liftCryptoOpt :: CryptoOpt k a -> m a
+  liftCryptoOp :: CryptoOp k a -> m a
 
-  default liftCryptoOpt :: (MonadTrans t, MonadCrypto k m1, m ~ t m1) => CryptoOpt k a -> m a
-  liftCryptoOpt = lift . liftCryptoOpt
+  default liftCryptoOp :: (MonadTrans t, MonadCrypto k m1, m ~ t m1) => CryptoOp k a -> m a
+  liftCryptoOp = lift . liftCryptoOp
 
 --------------------------------------------------------------------------------
 instance MonadCrypto k m => MonadCrypto k (ExceptT e m)
@@ -96,7 +96,7 @@ instance MonadCrypto k m => MonadCrypto k (DatabaseT m)
 
 --------------------------------------------------------------------------------
 -- | Primitive cryptographic operations as a Free Monad.
-data CryptoOptF (k :: *) f
+data CryptoOpF (k :: *) f
   = GenerateRandomBytes Int (ByteString -> f)
   | GenerateKey Cipher Label (Key k -> f)
   | FetchKey Label (Maybe (Key k) -> f)
@@ -110,9 +110,9 @@ data CryptoOptF (k :: *) f
   | AsymmetricSign (KeyPair k) Hash ByteString (Signature ByteString -> f)
   | VerifySignature PublicKey (Signature ByteString) ByteString (SigStatus -> f)
 
-deriving instance Functor (CryptoOptF k)
+deriving instance Functor (CryptoOpF k)
 
--- | The 'CryptoOptF' functor as a Church-encoded Free Monad.
-type CryptoOpt k = F (CryptoOptF k)
+-- | The 'CryptoOpF' functor as a Church-encoded Free Monad.
+type CryptoOp k = F (CryptoOpF k)
 
-makeFree ''CryptoOptF
+makeFree ''CryptoOpF

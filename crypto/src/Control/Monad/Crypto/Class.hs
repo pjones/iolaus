@@ -86,22 +86,22 @@ type LByteString = LByteString.ByteString
 --------------------------------------------------------------------------------
 -- | Generate random bytes for a cryptographic purpose.
 generateRandomBytes :: MonadCrypto k m => Int -> m ByteString
-generateRandomBytes = liftCryptoOpt . M.generateRandomBytes
+generateRandomBytes = liftCryptoOp . M.generateRandomBytes
 
 --------------------------------------------------------------------------------
 -- | Generate a new symmetric key given a 'Cipher' and 'Label'.
 generateKey :: MonadCrypto k m => Cipher -> Label -> m (Key k)
-generateKey = (liftCryptoOpt .) . M.generateKey
+generateKey = (liftCryptoOp .) . M.generateKey
 
 --------------------------------------------------------------------------------
 -- | Fetch an existing symmetric key.
 fetchKey :: MonadCrypto k m => Label -> m (Maybe (Key k))
-fetchKey = liftCryptoOpt . M.fetchKey
+fetchKey = liftCryptoOp . M.fetchKey
 
 --------------------------------------------------------------------------------
 -- | Encrypt a 'ByteString' using the given symmetric key.
 encrypt :: MonadCrypto k m => Key k -> ByteString -> m (Secret ByteString)
-encrypt = (liftCryptoOpt .) . M.encrypt
+encrypt = (liftCryptoOp .) . M.encrypt
 
 --------------------------------------------------------------------------------
 -- | Symmetric encryption of any type that can be converted to 'Binary'.
@@ -111,7 +111,7 @@ encrypt' k  = fmap reSec . encrypt k . toB
 --------------------------------------------------------------------------------
 -- | Decrypt a 'ByteString' using the given symmetric key.
 decrypt :: MonadCrypto k m => Key k -> Secret ByteString -> m ByteString
-decrypt = (liftCryptoOpt .) . M.decrypt
+decrypt = (liftCryptoOp .) . M.decrypt
 
 --------------------------------------------------------------------------------
 -- | Symmetric decryption of any type that can be converted from 'Binary'.
@@ -134,22 +134,22 @@ decrypt' k = fromB <=< decrypt k . reSec
 --------------------------------------------------------------------------------
 -- | Generate a private/public asymmetric key.
 generateKeyPair :: MonadCrypto k m => Algo -> Label -> m (KeyPair k)
-generateKeyPair = (liftCryptoOpt .) . M.generateKeyPair
+generateKeyPair = (liftCryptoOp .) . M.generateKeyPair
 
 --------------------------------------------------------------------------------
 -- | Fetch an existing asymmetric key pair.
 fetchKeyPair :: MonadCrypto k m => Label -> m (Maybe (KeyPair k))
-fetchKeyPair = liftCryptoOpt . M.fetchKeyPair
+fetchKeyPair = liftCryptoOp . M.fetchKeyPair
 
 --------------------------------------------------------------------------------
 -- | Extract a public key from the given private key.
 toPublicKey :: MonadCrypto k m => KeyPair k -> m PublicKey
-toPublicKey = liftCryptoOpt . M.toPublicKey
+toPublicKey = liftCryptoOp . M.toPublicKey
 
 --------------------------------------------------------------------------------
 -- | Encrypt the given 'ByteString' using a public key.
 asymmetricEncrypt :: MonadCrypto k m => PublicKey -> ByteString -> m (Secret ByteString)
-asymmetricEncrypt = (liftCryptoOpt .) . M.asymmetricEncrypt
+asymmetricEncrypt = (liftCryptoOp .) . M.asymmetricEncrypt
 
 --------------------------------------------------------------------------------
 -- | Asymmetric encryption of any type that can be converted to
@@ -160,7 +160,7 @@ asymmetricEncrypt' k = fmap reSec . asymmetricEncrypt k . toB
 --------------------------------------------------------------------------------
 -- | Decrypt a 'ByteString' using the given private key.
 asymmetricDecrypt :: MonadCrypto k m => KeyPair k -> Secret ByteString -> m ByteString
-asymmetricDecrypt = (liftCryptoOpt .) . M.asymmetricDecrypt
+asymmetricDecrypt = (liftCryptoOp .) . M.asymmetricDecrypt
 
 --------------------------------------------------------------------------------
 -- | Asymmetric decryption of any type that can be converted from
@@ -184,7 +184,7 @@ asymmetricDecrypt' k = fromB <=< asymmetricDecrypt k  . reSec
 -- | Create a cryptograpic signature of the given 'ByteString'.
 asymmetricSign :: MonadCrypto k m
   => KeyPair k -> Hash -> ByteString -> m (Signature ByteString)
-asymmetricSign k = (liftCryptoOpt .) . M.asymmetricSign k
+asymmetricSign k = (liftCryptoOp .) . M.asymmetricSign k
 
 --------------------------------------------------------------------------------
 -- | The value to be signed is converted to 'Binary', hashed using a
@@ -200,7 +200,7 @@ asymmetricSign' k h = fmap reSig . asymmetricSign k h . toB
 --------------------------------------------------------------------------------
 -- | Verify a previously generated signature for the given 'ByteString'.
 verifySignature :: MonadCrypto k m => PublicKey -> Signature ByteString -> ByteString -> m SigStatus
-verifySignature k = (liftCryptoOpt .) . M.verifySignature k
+verifySignature k = (liftCryptoOp .) . M.verifySignature k
 
 --------------------------------------------------------------------------------
 -- | Verify a signature.
@@ -217,22 +217,22 @@ verifySignature' k s = verifySignature k (reSig s) . toB
 --------------------------------------------------------------------------------
 -- | Expose a symmetric key as binary data.
 encodeKey :: MonadKeyAccess k m => Key k -> m LByteString
-encodeKey = liftKeyAccessOpt . K.encodeKey
+encodeKey = liftKeyAccessOp . K.encodeKey
 
 --------------------------------------------------------------------------------
 -- | Attempt to decode a symmetric key from binary data.
 decodeKey :: MonadKeyAccess k m => LByteString -> m (Maybe (Key k))
-decodeKey = liftKeyAccessOpt . K.decodeKey
+decodeKey = liftKeyAccessOp . K.decodeKey
 
 --------------------------------------------------------------------------------
 -- | Expose the private key as PEM-encoded data.
 encodePrivateKey :: MonadKeyAccess k m => KeyPair k -> m LByteString
-encodePrivateKey = liftKeyAccessOpt . K.encodePrivateKey
+encodePrivateKey = liftKeyAccessOp . K.encodePrivateKey
 
 --------------------------------------------------------------------------------
 -- | Attempt to decode a PEM-encoded private key.
 decodePrivateKey :: MonadKeyAccess k m => Label -> LByteString -> m (Maybe (KeyPair k))
-decodePrivateKey = (liftKeyAccessOpt .) . K.decodePrivateKey
+decodePrivateKey = (liftKeyAccessOp .) . K.decodePrivateKey
 
 --------------------------------------------------------------------------------
 -- Utility functions:
