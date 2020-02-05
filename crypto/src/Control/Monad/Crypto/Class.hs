@@ -55,6 +55,7 @@ module Control.Monad.Crypto.Class
   , MonadKeyAccess
   , encodeKey
   , decodeKey
+  , toX509PrivKey
   , encodePrivateKey
   , decodePrivateKey
   ) where
@@ -68,6 +69,7 @@ import Data.Binary (Binary)
 import qualified Data.Binary as Binary
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LByteString
+import qualified Data.X509 as X509
 
 --------------------------------------------------------------------------------
 -- Package Imports:
@@ -223,6 +225,11 @@ encodeKey = liftKeyAccessOp . K.encodeKey
 -- | Attempt to decode a symmetric key from binary data.
 decodeKey :: MonadKeyAccess k m => LByteString -> m (Maybe (Key k))
 decodeKey = liftKeyAccessOp . K.decodeKey
+
+--------------------------------------------------------------------------------
+-- | Expose the private key in X509 format.
+toX509PrivKey :: MonadKeyAccess k m => KeyPair k -> m X509.PrivKey
+toX509PrivKey = liftKeyAccessOp . K.toX509PrivKey
 
 --------------------------------------------------------------------------------
 -- | Expose the private key as PEM-encoded data.

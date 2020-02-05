@@ -22,6 +22,7 @@ module Control.Monad.Crypto.KeyAccess
   , KeyAccessOpF(..)
   , encodeKey
   , decodeKey
+  , toX509PrivKey
   , encodePrivateKey
   , decodePrivateKey
   ) where
@@ -31,6 +32,7 @@ module Control.Monad.Crypto.KeyAccess
 import Control.Monad.Free.Church (MonadFree(..), F, liftF)
 import Control.Monad.Free.TH (makeFree)
 import Data.ByteString.Lazy (ByteString)
+import qualified Data.X509 as X509
 
 --------------------------------------------------------------------------------
 -- For MTL Instances:
@@ -68,6 +70,7 @@ instance MonadKeyAccess k m => MonadKeyAccess k (ContT r m)
 data KeyAccessOpF (k :: *) f
   = EncodeKey (Key k) (ByteString -> f)
   | DecodeKey ByteString (Maybe (Key k) -> f)
+  | ToX509PrivKey (KeyPair k) (X509.PrivKey -> f)
   | EncodePrivateKey (KeyPair k) (ByteString -> f)
   | DecodePrivateKey Label ByteString (Maybe (KeyPair k) -> f)
 

@@ -246,6 +246,9 @@ evalKeyAccess opt = CryptoniteT . runF opt pure $ \case
       Left _ -> next Nothing
       Right (_, _, (l, k)) -> next (Just (CryptoniteKey l k))
 
+  ToX509PrivKey (CryptoniteKeyPair _ k) next ->
+    next (Asymmetric.toX509PrivKey k)
+
   EncodePrivateKey (CryptoniteKeyPair _ k) next ->
     next (encodePEM [toPEM PrivateKeySection (Asymmetric.toX509PrivKey k)])
 
