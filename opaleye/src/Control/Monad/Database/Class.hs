@@ -33,7 +33,6 @@ module Control.Monad.Database.Class
   , transactionEither
   , transactionWith
   , transactionEitherWith
-  , rollback
 
     -- * Schema Migrations
   , migrate
@@ -162,14 +161,6 @@ transactionWith
   -> m a
 transactionWith t =
   either (throwError . (_DbError #)) pure <=< transactionEitherWith t
-
---------------------------------------------------------------------------------
--- | Abort and rollback the current transaction.
---
--- The running transaction (or query) will terminate with a
---' RollbackError' error.
-rollback :: MonadDatabase m => m a
-rollback = liftDatabaseOp M.throwRollback
 
 --------------------------------------------------------------------------------
 -- | Migrate the database.

@@ -40,7 +40,7 @@ import qualified Database.PostgreSQL.Simple as PostgreSQL
 -- An exception that triggers a database transaction rollback.
 --
 -- @since 0.1.0.0
-newtype Rollback = Rollback ()
+newtype Rollback = Rollback String
   deriving stock (Eq, Show)
   deriving anyclass (Exception)
 
@@ -54,7 +54,7 @@ data DbError
     -- represent a SQL syntax error, but rather a problem running the
     -- SQL statement.)
 
-  | RollbackError
+  | RollbackError String
     -- ^ A 'Rollback' exception was thrown.
 
   deriving (Eq, Show)

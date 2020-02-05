@@ -24,14 +24,16 @@ module Iolaus.Database.Query.Internal
   , insert1
   , update
   , delete
+  , rollback
   ) where
 
 --------------------------------------------------------------------------------
-import Control.Exception (onException)
+import Control.Exception (throwIO, onException)
 import Control.Lens ((^.))
 import Control.Monad (MonadPlus(..))
+import Control.Monad.Fail
 import Control.Monad.IO.Class
-import Control.Monad.Reader
+import Control.Monad.Reader hiding (fail)
 import Data.Int (Int64)
 import Data.Maybe (listToMaybe, fromMaybe)
 import Data.Profunctor.Product.Default (Default)
@@ -39,10 +41,12 @@ import Database.PostgreSQL.Simple (Connection)
 import qualified Database.PostgreSQL.Simple.Transaction as Pg
 import Opaleye (FromFields, Select, Insert, Update, Delete)
 import qualified Opaleye as O
+import Prelude hiding (fail)
 import qualified System.Metrics.Counter as Counter
 
 --------------------------------------------------------------------------------
 import Iolaus.Database.Runtime
+import Iolaus.Database.Error
 
 --------------------------------------------------------------------------------
 -- | An opaque type representing one or more database queries.
@@ -54,10 +58,17 @@ import Iolaus.Database.Runtime
 --
 --   * "Control.Effect.Database"
 --
+-- NOTE: The 'MonadFail' instance for 'Query' throws a 'Rollback'
+-- exception.
+--
 -- @since 0.1.0.0
 newtype Query a = Query
   { runQuery :: ReaderT (Runtime, Connection) IO a }
   deriving newtype (Functor, Applicative, Monad)
+
+--------------------------------------------------------------------------------
+instance MonadFail Query where
+  fail = Query . liftIO . throwIO . Rollback
 
 --------------------------------------------------------------------------------
 -- | Internal function for lifting Opaleye query types.
@@ -175,3 +186,11 @@ update = Query . liftOpaleyeOp . flip O.runUpdate_
 -- @since 0.1.0.0
 delete :: Delete a -> Query a
 delete = Query . liftOpaleyeOp . flip O.runDelete_
+
+--------------------------------------------------------------------------------
+-- | Abort and rollback the current transaction.
+--
+-- The running transaction (or query) will terminate with a
+--' RollbackError' error.
+rollback :: Query a
+rollback = fail "rollback"

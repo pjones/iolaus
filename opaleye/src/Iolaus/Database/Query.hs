@@ -26,6 +26,7 @@ module Iolaus.Database.Query
   , insert1
   , update
   , delete
+  , rollback
   , module Opaleye
   , module Opaleye.Operators
   , module Opaleye.Order

@@ -108,5 +108,5 @@ catchQueryErrors :: IO a -> IO (Either DbError a)
 catchQueryErrors m =
   catches (Right <$> m)
     [ Handler $ \(e :: PostgreSQL.SqlError) -> pure (Left (_SqlError # e))
-    , Handler $ \(_ :: Rollback) -> pure (Left (_RollbackError # ()))
+    , Handler $ \(Rollback s) -> pure (Left (_RollbackError # s))
     ]

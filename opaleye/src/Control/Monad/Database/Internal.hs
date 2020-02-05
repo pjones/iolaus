@@ -20,7 +20,6 @@ module Control.Monad.Database.Internal
   , DatabaseOpt
   , runQuery
   , transaction
-  , throwRollback
   , migrate
   , migrationTableExists
   ) where
@@ -71,7 +70,6 @@ instance MonadDatabase m => MonadDatabase (ContT r m)
 data DatabaseOptF f
   = forall a. RunQuery (Query a) (Either DbError a -> f)
   | forall a. Transaction TransactionMode (Query a) (Either DbError a -> f)
-  | forall a. ThrowRollback (a -> f)
   | Migrate FilePath MigrationVerbosity (MigrationResult String -> f)
   | MigrationTableExists (Bool -> f)
 

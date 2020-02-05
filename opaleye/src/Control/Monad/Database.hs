@@ -39,7 +39,6 @@ module Control.Monad.Database
 
 --------------------------------------------------------------------------------
 -- Library Imports:
-import Control.Exception (throwIO)
 import Control.Monad.Free.Church (runF)
 import Control.Monad.IO.Class
 import Database.PostgreSQL.Simple.Transaction hiding (rollback)
@@ -96,7 +95,6 @@ evalDatabaseOpt
 evalDatabaseOpt opt = DatabaseT . runF opt pure $ \case
     RunQuery q next -> runQ q >>= next
     Transaction t q next -> runT t q >>= next
-    ThrowRollback _ -> liftIO . throwIO $ Rollback ()
     Migrate p v next -> ask >>= \rt -> M.migrate rt p v >>= next
     MigrationTableExists k -> ask >>= M.initialized >>= k
 
