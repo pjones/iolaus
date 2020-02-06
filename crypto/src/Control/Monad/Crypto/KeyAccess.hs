@@ -29,6 +29,7 @@ module Control.Monad.Crypto.KeyAccess
 
 --------------------------------------------------------------------------------
 -- Library Imports:
+import Control.Monad.Database (DatabaseT)
 import Control.Monad.Free.Church (MonadFree(..), F, liftF)
 import Control.Monad.Free.TH (makeFree)
 import Data.ByteString.Lazy (ByteString)
@@ -65,6 +66,7 @@ instance MonadKeyAccess k m => MonadKeyAccess k (SState.StateT s m)
 instance MonadKeyAccess k m => MonadKeyAccess k (ReaderT r m)
 instance MonadKeyAccess k m => MonadKeyAccess k (IdentityT m)
 instance MonadKeyAccess k m => MonadKeyAccess k (ContT r m)
+instance MonadKeyAccess k m => MonadKeyAccess k (DatabaseT m)
 
 --------------------------------------------------------------------------------
 data KeyAccessOpF (k :: *) f
