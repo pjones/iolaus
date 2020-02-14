@@ -61,7 +61,7 @@ app = do
 
   liftIO (putStrLn ("key file is: " <> ByteString.unpack (getLabel label)))
 
-  secretNumber <- encrypt' key number
+  secretNumber <- encryptBinary key number
   liftIO (LByteString.putStrLn (Aeson.encode secretNumber))
 
 --------------------------------------------------------------------------------

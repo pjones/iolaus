@@ -116,19 +116,22 @@ testMultipleKeys :: Assertion
 testMultipleKeys = do
   let value = 42 :: Int
 
-  (a, b) <- runCrypto $ do
+  (a, b, c) <- runCrypto $ do
     keyA <- generateKey AES256 (toLabel "Key A")
     keyB <- generateKey AES256 (toLabel "Key B")
 
-    encA <- encrypt' keyA value
-    decA <- decrypt' keyA encA
+    encA <- encryptBinary keyA value
+    decA <- decryptBinary keyA encA
 
     -- Should fail to decode from Binary:
     decB <- catchError
-              (decrypt' keyB encA >> return (value + 1))
+              (decryptBinary keyB encA >> return (value + 1))
               (const (return value))
 
-    return (decA, decB)
+    -- Should return a Just:
+    decC <- tryDecryptBinary [keyA, keyB] encA
+    return (decA, decB, decC)
 
   a @?= value
   b @?= value
+  c @?= (Just value)

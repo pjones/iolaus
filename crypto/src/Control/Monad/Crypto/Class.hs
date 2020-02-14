@@ -29,22 +29,23 @@ module Control.Monad.Crypto.Class
   , generateKey
   , fetchKey
   , encrypt
-  , encrypt'
+  , encryptBinary
   , decrypt
-  , decrypt'
+  , decryptBinary
+  , tryDecryptBinary
 
     -- * Asymmetric Primitives
   , generateKeyPair
   , fetchKeyPair
   , toPublicKey
   , asymmetricEncrypt
-  , asymmetricEncrypt'
+  , asymmetricEncryptBinary
   , asymmetricDecrypt
-  , asymmetricDecrypt'
+  , asymmetricDecryptBinary
   , asymmetricSign
-  , asymmetricSign'
+  , asymmetricSignBinary
   , verifySignature
-  , verifySignature'
+  , verifySignatureBinary
 
     -- * Public Keys
   , PublicKey
@@ -64,7 +65,7 @@ module Control.Monad.Crypto.Class
 -- Library Imports:
 import Control.Monad
 import Control.Monad.Error.Lens (throwing)
-import Control.Monad.Except (MonadError)
+import Control.Monad.Except (MonadError, runExceptT)
 import Data.Binary (Binary)
 import qualified Data.Binary as Binary
 import Data.ByteString (ByteString)
@@ -107,8 +108,8 @@ encrypt = (liftCryptoOp .) . M.encrypt
 
 --------------------------------------------------------------------------------
 -- | Symmetric encryption of any type that can be converted to 'Binary'.
-encrypt' :: (MonadCrypto k m, Binary a) => Key k -> a -> m (Secret a)
-encrypt' k  = fmap reSec . encrypt k . toB
+encryptBinary :: (MonadCrypto k m, Binary a) => Key k -> a -> m (Secret a)
+encryptBinary k  = fmap reSec . encrypt k . toB
 
 --------------------------------------------------------------------------------
 -- | Decrypt a 'ByteString' using the given symmetric key.
@@ -122,7 +123,7 @@ decrypt = (liftCryptoOp .) . M.decrypt
 -- an error will be thrown.  This usually indicates that you used the
 -- wrong encryption key but could also indicate that the 'Secret' data
 -- is corrupt.
-decrypt'
+decryptBinary
   :: ( MonadCrypto k m
      , MonadError  e m
      , AsCryptoError e
@@ -131,7 +132,27 @@ decrypt'
   => Key k
   -> Secret a
   -> m a
-decrypt' k = fromB <=< decrypt k . reSec
+decryptBinary k = fromB <=< decrypt k . reSec
+
+--------------------------------------------------------------------------------
+-- | Run 'decryptBinary' with each key until one of them produces a
+-- successful value.
+tryDecryptBinary
+  :: ( MonadCrypto k m
+     , Binary a
+     )
+  => [Key k]
+  -> Secret a
+  -> m (Maybe a)
+tryDecryptBinary keys s =
+    foldM go Nothing keys
+  where
+    go (Just a) _ =
+      pure (Just a)
+    go Nothing  key =
+      runExceptT (decryptBinary key s) >>= \case
+        Left (_ :: CryptoError) -> pure Nothing
+        Right y -> pure (Just y)
 
 --------------------------------------------------------------------------------
 -- | Generate a private/public asymmetric key.
@@ -156,8 +177,8 @@ asymmetricEncrypt = (liftCryptoOp .) . M.asymmetricEncrypt
 --------------------------------------------------------------------------------
 -- | Asymmetric encryption of any type that can be converted to
 -- 'Binary'.
-asymmetricEncrypt' :: (MonadCrypto k m, Binary a) => PublicKey -> a -> m (Secret a)
-asymmetricEncrypt' k = fmap reSec . asymmetricEncrypt k . toB
+asymmetricEncryptBinary :: (MonadCrypto k m, Binary a) => PublicKey -> a -> m (Secret a)
+asymmetricEncryptBinary k = fmap reSec . asymmetricEncrypt k . toB
 
 --------------------------------------------------------------------------------
 -- | Decrypt a 'ByteString' using the given private key.
@@ -173,14 +194,14 @@ asymmetricDecrypt = (liftCryptoOp .) . M.asymmetricDecrypt
 -- an error will be thrown.  This usually indicates that you used the
 -- wrong encryption key but could also indicate that the 'Secret' data
 -- is corrupt.
-asymmetricDecrypt'
+asymmetricDecryptBinary
   :: ( MonadCrypto k m
      , MonadError  e m
      , AsCryptoError e
      , Binary a
      )
   => KeyPair k -> Secret a -> m a
-asymmetricDecrypt' k = fromB <=< asymmetricDecrypt k  . reSec
+asymmetricDecryptBinary k = fromB <=< asymmetricDecrypt k  . reSec
 
 --------------------------------------------------------------------------------
 -- | Create a cryptograpic signature of the given 'ByteString'.
@@ -192,12 +213,12 @@ asymmetricSign k = (liftCryptoOp .) . M.asymmetricSign k
 -- | The value to be signed is converted to 'Binary', hashed using a
 -- hashing algorithm, and then the hashed value is encrypted with the
 -- private key component of the 'KeyPair'.
-asymmetricSign'
+asymmetricSignBinary
   :: ( MonadCrypto k m
      , Binary a
      )
   => KeyPair k -> Hash -> a -> m (Signature a)
-asymmetricSign' k h = fmap reSig . asymmetricSign k h . toB
+asymmetricSignBinary k h = fmap reSig . asymmetricSign k h . toB
 
 --------------------------------------------------------------------------------
 -- | Verify a previously generated signature for the given 'ByteString'.
@@ -206,7 +227,7 @@ verifySignature k = (liftCryptoOp .) . M.verifySignature k
 
 --------------------------------------------------------------------------------
 -- | Verify a signature.
-verifySignature'
+verifySignatureBinary
   :: ( MonadCrypto k m
      , Binary a
      )
@@ -214,7 +235,7 @@ verifySignature'
   -> Signature a
   -> a
   -> m SigStatus
-verifySignature' k s = verifySignature k (reSig s) . toB
+verifySignatureBinary k s = verifySignature k (reSig s) . toB
 
 --------------------------------------------------------------------------------
 -- | Expose a symmetric key as binary data.

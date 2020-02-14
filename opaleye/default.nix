@@ -12,7 +12,10 @@ let
 
 in nix-hs {
   cabal = ./iolaus-opaleye.cabal;
-  flags = pkgs.lib.optional debug "debug";
+
+  flags
+    =  ["fused-effects"]
+    ++ pkgs.lib.optional debug "debug";
 
   overrides = lib: self: super:
     (import ../nix/overrides.nix lib self super) // (with lib; {

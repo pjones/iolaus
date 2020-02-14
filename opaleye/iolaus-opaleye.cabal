@@ -44,6 +44,12 @@ flag debug
   default: False
 
 --------------------------------------------------------------------------------
+flag fused-effects
+  description: Enable support for fused-effects
+  manual: False
+  default: True
+
+--------------------------------------------------------------------------------
 common options
   default-language: Haskell2010
   ghc-options:
@@ -105,7 +111,11 @@ common dependencies
                , retry                       >= 0.7   && < 0.9
                , template-haskell            >= 2.14  && < 2.15
                , text                        >= 1.2   && < 1.3
+               , transformers                >= 0.5   && < 0.6
                , uuid                        >= 1.3   && < 1.4
+
+  if flag(fused-effects)
+    build-depends: fused-effects >= 1.0 && < 1.1
 
 --------------------------------------------------------------------------------
 library
@@ -121,6 +131,7 @@ library
     Iolaus.Database.Newtype
     Iolaus.Database.Query
     Iolaus.Database.Table
+
   other-modules:
     Control.Monad.Database.Internal
     Iolaus.Database.Migrate
@@ -129,6 +140,13 @@ library
     Iolaus.Database.Table.Internal
     Iolaus.Database.Table.TH
     Iolaus.Database.Transaction
+
+  if flag(fused-effects)
+    exposed-modules:
+      Control.Effect.Database
+      Control.Carrier.Database
+    other-modules:
+      Control.Effect.Database.Internal
 
 --------------------------------------------------------------------------------
 executable example

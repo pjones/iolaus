@@ -99,4 +99,4 @@ toHashedSecret
   -> SharedSalt  -- ^ The salt to use for hashing.
   -> a           -- ^ The value to protect.
   -> m (HashedSecret a)
-toHashedSecret k s a = HashedSecret (saltedHash s a) <$> encrypt' k a
+toHashedSecret k s a = HashedSecret (saltedHash s a) <$> encryptBinary k a
