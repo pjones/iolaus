@@ -24,7 +24,6 @@ module Iolaus.Test.Table
   ) where
 
 --------------------------------------------------------------------------------
-import Data.Int (Int64)
 import Data.Text (Text)
 import Iolaus.Database.Table
 import Test.Tasty

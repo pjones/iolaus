@@ -47,7 +47,6 @@ import Control.Lens.TH (makeClassy)
 import Control.Monad.Database.Class (MonadDatabase)
 import Control.Monad.Error.Lens (throwing)
 import Control.Monad.Free.Church (runF)
-import Control.Monad.IO.Class (MonadIO, liftIO)
 import Crypto.Random (MonadRandom(..), DRG(..), ChaChaDRG, drgNew)
 import qualified Data.Binary as Binary
 import Data.ByteString (ByteString)
@@ -82,10 +81,6 @@ import Control.Monad.Crypto.Internal
   ( MonadCrypto(..)
   , CryptoOp
   , CryptoOpF(..)
-  , KeyManager(..)
-  , FileExtension(..)
-  , GetStatus(..)
-  , PutStatus(..)
   )
 
 --------------------------------------------------------------------------------

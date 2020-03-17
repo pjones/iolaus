@@ -46,7 +46,6 @@ module Control.Monad.Database.Class
 --------------------------------------------------------------------------------
 -- Library Imports:
 import Control.Lens ((#))
-import Control.Monad ((<=<))
 import Control.Monad.Except
 import qualified Database.PostgreSQL.Simple.Transaction as PostgreSQL
 import Database.PostgreSQL.Simple.Transaction hiding (rollback)

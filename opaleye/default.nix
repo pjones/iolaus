@@ -19,5 +19,6 @@ in nix-hs {
 
   overrides = lib: self: super:
     (import ../nix/overrides.nix lib self super) // (with lib; {
+      ekg-core = unBreak (dontCheck (doJailbreak super.ekg-core));
     });
 }

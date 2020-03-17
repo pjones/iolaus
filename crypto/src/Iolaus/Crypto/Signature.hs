@@ -31,7 +31,6 @@ import qualified Data.X509 as X509
 
 --------------------------------------------------------------------------------
 -- Package Imports:
-import Iolaus.Crypto.Internal.Encoding (Encoding(..))
 import Iolaus.Crypto.Internal.Encoding as Encoding
 import Iolaus.Crypto.Internal.Key
 

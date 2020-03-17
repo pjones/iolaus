@@ -30,7 +30,6 @@ module Iolaus.Database.Query.Internal
 --------------------------------------------------------------------------------
 import Control.Exception (throwIO, onException)
 import Control.Lens ((^.))
-import Control.Monad (MonadPlus(..))
 import Control.Monad.Fail
 import Control.Monad.IO.Class
 import Control.Monad.Reader hiding (fail)

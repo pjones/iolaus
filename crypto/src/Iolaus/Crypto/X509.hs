@@ -42,7 +42,6 @@ import qualified Data.ASN1.OID as ASN1
 import qualified Data.ASN1.Types as ASN1
 import Data.Bits (shiftL, (.|.))
 import Data.Hourglass (DateTime(..), timeFromElapsedP)
-import Data.PEM (PEM)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text

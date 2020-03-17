@@ -31,9 +31,16 @@ module Iolaus.Crypto.HashedSecret
 import Data.Aeson (ToJSON(..), FromJSON(..), (.:), (.=))
 import qualified Data.Aeson as Aeson
 import Data.Binary (Binary)
+import qualified Data.ByteString.Char8 as Char8
 import Data.Profunctor.Product.Default (Default(..))
-import Database.PostgreSQL.Simple.FromField (FromField(..))
+import qualified Database.PostgreSQL.Simple.FromField as Pg
 import GHC.Generics (Generic)
+
+import Database.PostgreSQL.Simple.FromField
+  ( FromField(..)
+  , ResultError(..)
+  , conversionError
+  )
 
 import Opaleye
   ( QueryRunnerColumnDefault(..)
@@ -80,7 +87,14 @@ instance FromField (HashedSecret a) where
     where
       go v = case Aeson.fromJSON v of
                Aeson.Success x -> pure x
-               Aeson.Error e   -> fail e
+               Aeson.Error e   -> conversionError $
+                 ConversionFailed
+                   { errSQLType     = "JSONB"
+                   , errSQLTableOid = Pg.tableOid f
+                   , errSQLField    = maybe "unk" Char8.unpack (Pg.name f)
+                   , errHaskellType = "HashedSecret"
+                   , errMessage     = e
+                   }
 
 instance QueryRunnerColumnDefault SqlJsonb (HashedSecret a) where
   queryRunnerColumnDefault = fieldQueryRunnerColumn

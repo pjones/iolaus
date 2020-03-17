@@ -252,19 +252,24 @@ makeTableDefinition TableInfo{..} = do
 
 --------------------------------------------------------------------------------
 -- | Generate the @Map@ type family instance.
+--
+-- Example:
+-- @
+-- type instance Map g (Birthday (F f)) = Birthday (F (IMap g f))
+-- @
 makeMapInstance :: TableInfo -> Q [Dec]
 makeMapInstance TableInfo{..} = do
   f <- newName "f"
   g <- newName "g"
 
-  let lvals = [ VarT g
-              , ConT tbl_tctor `AppT` (ConT ''F `AppT` VarT f)
-              ]
+  let ltyp = ConT ''Map `AppT` VarT g `AppT`
+              (ConT tbl_tctor `AppT`
+                (ConT ''F `AppT` VarT f))
 
-      rval = ConT tbl_tctor `AppT`
+      rtyp = ConT tbl_tctor `AppT`
                (ConT ''F `AppT` (ConT ''IMap `AppT`
                                    VarT g `AppT`
                                    VarT f))
 
-  pure [ TySynInstD ''Map (TySynEqn lvals rval)
+  pure [ TySynInstD (TySynEqn (Just [PlainTV g, PlainTV f]) ltyp rtyp)
        ]

@@ -54,7 +54,6 @@ import Control.Monad.State.Class
 -- Package Imports:
 import Control.Monad.Database.Class hiding (MonadDatabase)
 import Iolaus.Database.Error
-import Iolaus.Database.Migrate (MigrationVerbosity(..), MigrationResult(..))
 import qualified Iolaus.Database.Migrate as M
 import Iolaus.Database.Query.Internal (Query(..))
 import Iolaus.Database.Runtime

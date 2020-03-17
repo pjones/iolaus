@@ -51,7 +51,7 @@ run =
     ]
 
 --------------------------------------------------------------------------------
-salt :: (Monad m) => ByteString -> m Salt
+salt :: (MonadFail m) => ByteString -> m Salt
 salt = either (const $ fail "should not happen") pure . toSalt
 
 --------------------------------------------------------------------------------
@@ -120,7 +120,7 @@ prop_hash_serialize =
 -- the randomly generated password is consider weak.  I think that
 -- should be extremely rare so until it becomes a problem I'm keeping
 -- things the way they are.
-mkStrong :: (Monad m) => Text -> m (Password Strong)
+mkStrong :: (MonadFail m) => Text -> m (Password Strong)
 mkStrong t =
   case toStrongPassword cfg day clear of
     Left e  -> fail (show e <> " " <> show t)
