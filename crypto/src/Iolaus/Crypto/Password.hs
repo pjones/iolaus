@@ -24,6 +24,7 @@ module Iolaus.Crypto.Password
   , Settings(..)
   , defaultSettings
   , toPassword
+  , generatePassword
   , toStrongPassword
   , toHashedPassword
   , toHashedPassword'
@@ -39,11 +40,13 @@ import qualified Crypto.KDF.PBKDF2 as PBKDF2
 import Data.Aeson (ToJSON(..), FromJSON(..), (.:), (.=))
 import qualified Data.Aeson as Aeson
 import Data.Bool (bool)
+import Data.ByteArray.Encoding
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
 import Data.Profunctor.Product.Default (Default(..))
 import Data.String (IsString(..))
 import Data.Text (Text)
+import qualified Data.Text.Encoding as Text
 import Data.Time.Calendar (Day)
 import Database.PostgreSQL.Simple.FromField (FromField(..), fromJSONField)
 import GHC.Generics (Generic)
@@ -196,6 +199,21 @@ instance Default Constant (Password Hashed) (Column SqlJsonb) where
 -- way.
 toPassword :: Text -> Password Clear
 toPassword t = Password (Clear t) (normalize t)
+
+--------------------------------------------------------------------------------
+-- | Generate a random password.
+--
+-- Returns the clear text password and the safe-to-store hashed
+-- password.
+generatePassword
+  :: MonadCrypto k m
+  => SharedSalt
+  -> Settings
+  -> m (Text, Password Hashed)
+generatePassword ss sets = do
+  bs <- convertToBase Base64URLUnpadded <$> generateRandomBytes 32
+  hs <- toHashedPassword ss sets (Password (Strong ()) bs)
+  pure (Text.decodeUtf8 bs, hs)
 
 --------------------------------------------------------------------------------
 -- | Determine the strength of a password using the zxcvbn algorithm
